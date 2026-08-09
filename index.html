@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestión de Prospección y Visitas — Grupo Pérez Rumbao</title>
+<style>
+  :root{
+    --azul:#002B5C; --azul-claro:#4F81BD; --gris:#595959; --gris-claro:#D9D9D9;
+    --verde:#70AD47; --rojo:#C00000; --amarillo:#FFC000; --blanco:#FFFFFF;
+    --bg:#F4F6F8; --linea:#E3E7EB;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--gris);
+    font-family:'Aptos','Calibri','Segoe UI',sans-serif; font-size:14px; line-height:1.4;
+  }
+  header{
+    background:var(--azul); color:#fff; padding:14px 22px;
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  }
+  header .logo{
+    font-weight:700; font-size:18px; letter-spacing:.5px;
+    border:2px solid #fff; padding:4px 10px; border-radius:4px;
+  }
+  header h1{font-size:18px; margin:0; font-weight:700}
+  header .sub{font-size:12px; opacity:.8; margin-left:auto}
+  main{padding:18px 22px; max-width:1400px; margin:0 auto}
+
+  /* KPIs */
+  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:18px}
+  .kpi{background:#fff; border:1px solid var(--linea); border-radius:8px; padding:14px 16px}
+  .kpi .n{font-size:26px; font-weight:700; color:var(--azul); line-height:1}
+  .kpi .l{font-size:12px; margin-top:6px; text-transform:uppercase; letter-spacing:.4px}
+  .kpi.warn .n{color:var(--rojo)}
+  .kpi.ok .n{color:var(--verde)}
+
+  /* Toolbar */
+  .toolbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px}
+  .toolbar input[type=search], .toolbar select{
+    padding:8px 10px; border:1px solid var(--gris-claro); border-radius:6px; font:inherit; background:#fff;
+  }
+  .toolbar input[type=search]{min-width:220px}
+  .toolbar label.chk{display:flex; align-items:center; gap:6px; font-size:13px}
+  .spacer{flex:1}
+  button{
+    font:inherit; cursor:pointer; border:none; border-radius:6px; padding:8px 14px; font-weight:600;
+  }
+  .btn-primary{background:var(--azul); color:#fff}
+  .btn-primary:hover{background:#013a7a}
+  .btn-ghost{background:#fff; color:var(--azul); border:1px solid var(--gris-claro)}
+  .btn-ghost:hover{border-color:var(--azul)}
+  .btn-sm{padding:5px 9px; font-size:12px}
+  .btn-danger{background:#fff; color:var(--rojo); border:1px solid var(--gris-claro)}
+  .btn-danger:hover{background:var(--rojo); color:#fff}
+
+  /* Tabla */
+  .card{background:#fff; border:1px solid var(--linea); border-radius:8px; overflow:hidden}
+  table{width:100%; border-collapse:collapse}
+  th,td{padding:10px 12px; text-align:left; border-bottom:1px solid var(--linea); vertical-align:middle}
+  th{background:#fafbfc; font-size:12px; text-transform:uppercase; letter-spacing:.4px; color:var(--gris); cursor:pointer; white-space:nowrap}
+  th:hover{color:var(--azul)}
+  tbody tr:hover{background:#f7f9fb}
+  td.num{text-align:right; font-variant-numeric:tabular-nums}
+  .empresa-cell{font-weight:600; color:var(--azul); cursor:pointer}
+  .empresa-cell:hover{text-decoration:underline}
+  .muted{color:#9aa2a9; font-size:12px}
+
+  /* Badges */
+  .badge{display:inline-block; min-width:22px; text-align:center; padding:2px 8px; border-radius:20px; font-weight:700; font-size:12px; color:#fff}
+  .tipo-A{background:var(--azul)}
+  .tipo-B{background:var(--azul-claro)}
+  .tipo-C{background:var(--gris)}
+  .etapa{display:inline-block; padding:2px 8px; border-radius:4px; font-size:12px; font-weight:600; border:1px solid}
+  .etapa-Prospección{color:var(--gris); border-color:var(--gris-claro); background:#fafafa}
+  .etapa-Oferta{color:#8a6d00; border-color:var(--amarillo); background:#fff8e1}
+  .etapa-Cierre{color:var(--verde); border-color:var(--verde); background:#f1f8ec}
+  .dot{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; vertical-align:middle}
+  .vencida{color:var(--rojo); font-weight:700}
+  .proxima-soon{color:#8a6d00; font-weight:600}
+  .sin-prog{color:#9aa2a9; font-style:italic}
+
+  /* Modal */
+  .overlay{position:fixed; inset:0; background:rgba(0,20,45,.45); display:none; align-items:flex-start; justify-content:center; padding:24px; overflow:auto; z-index:50}
+  .overlay.open{display:flex}
+  .modal{background:#fff; border-radius:10px; width:100%; max-width:920px; margin:auto; box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .modal-head{background:var(--azul); color:#fff; padding:14px 20px; border-radius:10px 10px 0 0; display:flex; align-items:center; gap:12px}
+  .modal-head h2{margin:0; font-size:17px}
+  .modal-head .x{margin-left:auto; background:transparent; color:#fff; font-size:20px; padding:0 6px}
+  .modal-body{padding:20px}
+  .modal-foot{padding:14px 20px; border-top:1px solid var(--linea); display:flex; gap:10px; justify-content:flex-end; align-items:center}
+
+  fieldset{border:1px solid var(--linea); border-radius:8px; padding:14px 16px; margin:0 0 16px}
+  legend{font-weight:700; color:var(--azul); padding:0 8px; font-size:13px; text-transform:uppercase; letter-spacing:.5px}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px}
+  .field{display:flex; flex-direction:column; gap:4px}
+  .field.full{grid-column:1/-1}
+  .field label{font-size:12px; font-weight:600; color:var(--gris)}
+  .field input, .field select, .field textarea{
+    padding:8px 10px; border:1px solid var(--gris-claro); border-radius:6px; font:inherit; background:#fff; color:var(--gris);
+  }
+  .field textarea{resize:vertical; min-height:60px}
+  .field input:focus, .field select:focus, .field textarea:focus{outline:none; border-color:var(--azul-claro); box-shadow:0 0 0 2px rgba(79,129,189,.2)}
+
+  .tipo-auto{display:flex; align-items:center; gap:10px; background:#f4f7fb; border:1px dashed var(--azul-claro); border-radius:8px; padding:10px 14px; margin-top:4px}
+  .tipo-auto .txt{font-size:13px}
+  .tipo-auto b{color:var(--azul)}
+
+  /* Funnel */
+  .funnel{display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
+  .funnel .stage{border:1px solid var(--linea); border-radius:8px; overflow:hidden}
+  .funnel .stage h3{margin:0; padding:8px 12px; font-size:13px; color:#fff; display:flex; align-items:center; gap:8px}
+  .funnel .stage.s1 h3{background:var(--gris)}
+  .funnel .stage.s2 h3{background:var(--azul-claro)}
+  .funnel .stage.s3 h3{background:var(--verde)}
+  .funnel .stage textarea{border:none; width:100%; min-height:110px; padding:10px 12px; resize:vertical; font:inherit; color:var(--gris)}
+  .funnel .stage textarea:focus{outline:none; background:#fbfdff}
+
+  .visit-box{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; align-items:end}
+  .prox-display{font-size:15px; font-weight:700}
+  .hint{font-size:11px; color:#9aa2a9; margin-top:2px}
+
+  .empty{padding:40px; text-align:center; color:#9aa2a9}
+
+  /* Vista toggle */
+  .viewtoggle{display:inline-flex; border:1px solid var(--gris-claro); border-radius:6px; overflow:hidden}
+  .viewtoggle button{border-radius:0; background:#fff; color:var(--gris); font-weight:600; padding:8px 14px}
+  .viewtoggle button.active{background:var(--azul); color:#fff}
+
+  /* Calendario */
+  .cal-head{display:flex; align-items:center; gap:12px; padding:12px 14px; border-bottom:1px solid var(--linea)}
+  .cal-head h2{margin:0; font-size:17px; color:var(--azul); text-transform:capitalize; min-width:190px}
+  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr)}
+  .cal-dow{background:#fafbfc; padding:8px; font-size:12px; text-transform:uppercase; letter-spacing:.4px; text-align:center; border-bottom:1px solid var(--linea); font-weight:600}
+  .cal-cell{min-height:104px; border-right:1px solid var(--linea); border-bottom:1px solid var(--linea); padding:6px; display:flex; flex-direction:column; gap:4px}
+  .cal-cell:nth-child(7n){border-right:none}
+  .cal-cell .daynum{font-size:12px; font-weight:600; color:var(--gris); align-self:flex-end}
+  .cal-cell.other{background:#fbfbfc}
+  .cal-cell.other .daynum{color:#c4cad0}
+  .cal-cell.today{background:#eef4fb}
+  .cal-cell.today .daynum{background:var(--azul); color:#fff; border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center}
+  .cal-ev{font-size:11px; padding:3px 6px; border-radius:4px; color:#fff; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.3}
+  .cal-ev:hover{opacity:.85}
+  .cal-ev.tipo-A{background:var(--azul)} .cal-ev.tipo-B{background:var(--azul-claro)} .cal-ev.tipo-C{background:var(--gris)}
+  .cal-ev.venc{background:var(--rojo)}
+  .venc-strip{background:#fdeaea; border:1px solid #f3c2c2; border-radius:8px; padding:10px 14px; margin-bottom:14px}
+  .venc-strip b{color:var(--rojo)}
+  .venc-strip .item{display:inline-block; margin:4px 6px 0 0; padding:3px 9px; background:#fff; border:1px solid #f3c2c2; border-radius:20px; font-size:12px; cursor:pointer; color:var(--rojo); font-weight:600}
+  .venc-strip .item:hover{background:var(--rojo); color:#fff}
+  .cal-legend{padding:10px 14px; font-size:12px; color:var(--gris); display:flex; gap:16px; flex-wrap:wrap; align-items:center}
+  .cal-legend .dot{width:11px; height:11px; border-radius:3px}
+
+  /* Login */
+  .login-wrap{position:fixed; inset:0; background:linear-gradient(135deg,#002B5C,#013a7a); display:flex; align-items:center; justify-content:center; padding:20px; z-index:100}
+  .login-card{background:#fff; border-radius:12px; width:100%; max-width:360px; padding:30px 28px; box-shadow:0 24px 70px rgba(0,0,0,.35)}
+  .login-card .logo{display:inline-block; font-weight:700; font-size:18px; letter-spacing:.5px; border:2px solid var(--azul); color:var(--azul); padding:4px 11px; border-radius:4px; margin-bottom:16px}
+  .login-card h2{margin:0 0 4px; color:var(--azul); font-size:21px}
+  .login-card p.sub{margin:0 0 18px; font-size:13px; color:#9aa2a9}
+  .login-card label{display:block; font-size:12px; font-weight:600; margin:10px 0 4px}
+  .login-card input{width:100%; padding:10px 12px; border:1px solid var(--gris-claro); border-radius:6px; font:inherit; color:var(--gris)}
+  .login-card input:focus{outline:none; border-color:var(--azul-claro); box-shadow:0 0 0 2px rgba(79,129,189,.2)}
+  .login-card .btn-primary{width:100%; margin-top:18px; padding:11px}
+  .login-err{color:var(--rojo); font-size:13px; margin-top:10px; min-height:16px}
+  .login-hint{margin-top:16px; padding-top:14px; border-top:1px solid var(--linea); font-size:11.5px; color:#9aa2a9; line-height:1.7}
+  .login-hint b{color:var(--gris)}
+  body.locked{overflow:hidden}
+
+  /* Usuario en cabecera */
+  .userbox{display:flex; align-items:center; gap:12px; margin-left:auto}
+  .userbox .who{text-align:right; font-size:12px; line-height:1.25}
+  .userbox .who b{font-size:13px}
+  .role-badge{display:inline-block; padding:2px 9px; border-radius:20px; font-size:11px; font-weight:700; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.4)}
+  header .btn-head{background:rgba(255,255,255,.14); color:#fff; border:1px solid rgba(255,255,255,.4); padding:6px 12px; font-size:12px}
+  header .btn-head:hover{background:rgba(255,255,255,.28)}
+
+  @media(max-width:720px){ .funnel{grid-template-columns:1fr} th.hide-sm,td.hide-sm{display:none} .cal-cell{min-height:72px} }
+</style>
+</head>
+<body>
+<div class="login-wrap" id="loginWrap">
+  <form class="login-card" onsubmit="doLogin(event)">
+    <span class="logo">PR</span>
+    <h2>Acceso</h2>
+    <p class="sub">Gestión de Prospección y Visitas · Grupo Pérez Rumbao</p>
+    <label for="luser">Usuario</label>
+    <input id="luser" autocomplete="username" autofocus>
+    <label for="lpass">Contraseña</label>
+    <input id="lpass" type="password" autocomplete="current-password">
+    <button class="btn-primary" type="submit">Entrar</button>
+    <div class="login-err" id="loginErr"></div>
+    <div class="login-hint"><b>Usuarios demo:</b><br>admin&nbsp;/&nbsp;PRadmin-2026<br>jefe&nbsp;/&nbsp;PRjefe-2026<br>vendedor&nbsp;/&nbsp;PRvend-2026</div>
+  </form>
+</div>
+
+<header id="appHeader" style="display:none">
+  <span class="logo">PR</span>
+  <h1>Gestión de Prospección y Visitas</h1>
+  <div class="userbox">
+    <button class="btn-head" id="cfgBtn" style="display:none" onclick="openConfig()">⚙ Configuración</button>
+    <div class="who"><b id="uName">—</b><br><span class="role-badge" id="uRole">—</span></div>
+    <button class="btn-head" onclick="logout()">Salir</button>
+  </div>
+</header>
+
+<main id="appMain" style="display:none">
+  <div class="kpis" id="kpis"></div>
+
+  <div class="toolbar">
+    <button class="btn-primary" onclick="openModal()">+ Nuevo cliente</button>
+    <span class="viewtoggle">
+      <button id="vLista" class="active" onclick="setView('lista')">📋 Lista</button>
+      <button id="vCal" onclick="setView('cal')">📅 Calendario</button>
+    </span>
+    <input type="search" id="q" placeholder="Buscar empresa, población, marca…" oninput="render()">
+    <select id="fTipo" onchange="render()">
+      <option value="">Todos los tipos</option>
+      <option value="A">Tipo A (+50)</option>
+      <option value="B">Tipo B (2–50)</option>
+      <option value="C">Tipo C (sin prog.)</option>
+    </select>
+    <select id="fEtapa" onchange="render()">
+      <option value="">Todas las etapas</option>
+      <option>Prospección</option>
+      <option>Oferta</option>
+      <option>Cierre</option>
+    </select>
+    <label class="chk"><input type="checkbox" id="fVenc" onchange="render()"> Solo visitas vencidas/próximas</label>
+    <span class="spacer"></span>
+    <button class="btn-ghost btn-sm" onclick="exportCSV()">Exportar CSV</button>
+    <button class="btn-ghost btn-sm" onclick="exportJSON()">Copia seguridad</button>
+    <button class="btn-ghost btn-sm" onclick="document.getElementById('imp').click()">Importar</button>
+    <input type="file" id="imp" accept="application/json" style="display:none" onchange="importJSON(event)">
+  </div>
+
+  <div class="card" id="viewLista">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortBy('empresa')">Empresa</th>
+          <th class="hide-sm" onclick="sortBy('poblacion')">Población</th>
+          <th onclick="sortBy('tipo')">Tipo</th>
+          <th class="num" onclick="sortBy('parque')">Parque</th>
+          <th class="hide-sm" onclick="sortBy('etapa')">Etapa funnel</th>
+          <th class="hide-sm" onclick="sortBy('ultimaVisita')">Última visita</th>
+          <th onclick="sortBy('proxima')">Próxima visita</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div id="empty" class="empty" style="display:none">No hay clientes que coincidan. Crea el primero con <b>“+ Nuevo cliente”</b>.</div>
+  </div>
+
+  <div id="viewCal" style="display:none">
+    <div id="vencStrip"></div>
+    <div class="card">
+      <div class="cal-head">
+        <button class="btn-ghost btn-sm" onclick="calMove(-1)">‹</button>
+        <h2 id="calTitle"></h2>
+        <button class="btn-ghost btn-sm" onclick="calMove(1)">›</button>
+        <button class="btn-ghost btn-sm" onclick="calMove(0)">Hoy</button>
+      </div>
+      <div class="cal-grid" id="calDow"></div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-legend">
+        <span><span class="dot" style="background:var(--azul)"></span>Tipo A (90 días)</span>
+        <span><span class="dot" style="background:var(--azul-claro)"></span>Tipo B (360 días)</span>
+        <span><span class="dot" style="background:var(--rojo)"></span>Vencida</span>
+        <span class="muted">Los clientes tipo C no se programan.</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modalTitle">Nuevo cliente</h2>
+      <button class="x" onclick="closeModal()" title="Cerrar">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="cid">
+
+      <fieldset>
+        <legend>Datos del cliente</legend>
+        <div class="grid">
+          <div class="field full"><label>Empresa *</label><input id="empresa" placeholder="Razón social / nombre comercial"></div>
+          <div class="field"><label>Persona de contacto</label><input id="contacto"></div>
+          <div class="field"><label>Teléfono</label><input id="telefono"></div>
+          <div class="field"><label>Email</label><input id="email"></div>
+          <div class="field"><label>Población</label><input id="poblacion"></div>
+          <div class="field"><label>¿Cliente nuevo?</label>
+            <select id="nuevo"><option value="no">No — ya es cliente</option><option value="si">Sí — cliente nuevo</option></select>
+          </div>
+          <div class="field" id="fldComercial"><label>Comercial asignado</label>
+            <select id="comercial"></select>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>1 · Prospección — Datos de flota (parque)</legend>
+        <div class="grid">
+          <div class="field"><label>Nº de turismos</label><input type="number" min="0" id="turismos" value="0" oninput="calcTipo()"></div>
+          <div class="field"><label>Combustión turismos</label>
+            <select id="combTur">
+              <option value="">—</option><option>Gasolina</option><option>Diésel</option><option>Híbrido (HEV)</option>
+              <option>Híbrido enchufable (PHEV)</option><option>Eléctrico (BEV)</option><option>GLP / GNC</option>
+            </select>
+          </div>
+          <div class="field"><label>Nº de furgonetas</label><input type="number" min="0" id="furgonetas" value="0" oninput="calcTipo()"></div>
+          <div class="field"><label>Tamaño furgoneta</label>
+            <select id="tamFur"><option value="">—</option><option>Tipo 1A</option><option>Tipo 2A</option><option>Tipo 3A</option></select>
+          </div>
+          <div class="field"><label>Combustión furgonetas</label>
+            <select id="combFur">
+              <option value="">—</option><option>Gasolina</option><option>Diésel</option><option>Híbrido (HEV)</option>
+              <option>Híbrido enchufable (PHEV)</option><option>Eléctrico (BEV)</option><option>GLP / GNC</option>
+            </select>
+          </div>
+          <div class="field"><label>Uds. a cambiar (año en curso)</label><input type="number" min="0" id="udsCambiar" value="0"></div>
+          <div class="field"><label>Uds. a ampliar (año en curso)</label><input type="number" min="0" id="udsAmpliar" value="0"></div>
+          <div class="field full"><label>Marcas actuales</label><input id="marcas" placeholder="Ej. Renault, Ford, Peugeot…"></div>
+          <div class="field full"><label>Comentarios de prospección</label><textarea id="comentarios"></textarea></div>
+        </div>
+        <div class="tipo-auto">
+          <span class="badge" id="tipoBadge">–</span>
+          <span class="txt">Parque total: <b id="parqueTxt">0</b> uds → Clasificación automática: <b id="tipoTxt">—</b> · <span id="cadenciaTxt"></span></span>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Funnel de gestión — resultado de la visita en cada fase</legend>
+        <div class="funnel">
+          <div class="stage s1"><h3>1 · Prospección</h3><textarea id="funProspeccion" placeholder="Resultado de la visita de prospección…"></textarea></div>
+          <div class="stage s2"><h3>2 · Oferta</h3><textarea id="funOferta" placeholder="Resultado de la visita / oferta presentada…"></textarea></div>
+          <div class="stage s3"><h3>3 · Cierre</h3><textarea id="funCierre" placeholder="Resultado del cierre…"></textarea></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Gestión de visitas</legend>
+        <div class="visit-box">
+          <div class="field"><label>Etapa actual del funnel</label>
+            <select id="etapa"><option>Prospección</option><option>Oferta</option><option>Cierre</option></select>
+          </div>
+          <div class="field"><label>Fecha última visita</label><input type="date" id="ultimaVisita" oninput="updateProxPreview()"></div>
+          <div class="field">
+            <label>Próxima visita programada</label>
+            <div class="prox-display" id="proxPreview">—</div>
+            <div class="hint" id="proxHint"></div>
+          </div>
+          <div class="field"><label>&nbsp;</label><button class="btn-ghost" onclick="registrarVisitaHoy()">📌 Registrar visita hoy</button></div>
+        </div>
+      </fieldset>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-danger" id="delBtn" style="display:none" onclick="deleteClient()">Eliminar</button>
+      <span class="spacer"></span>
+      <button class="btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn-primary" onclick="saveClient()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIGURACIÓN (solo admin) -->
+<div class="overlay" id="cfgOverlay">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-head"><h2>⚙ Configuración del sistema</h2><button class="x" onclick="closeConfig()" title="Cerrar">×</button></div>
+    <div class="modal-body">
+      <fieldset>
+        <legend>Clasificación por parque</legend>
+        <div class="grid">
+          <div class="field"><label>Tipo A — parque mayor que</label><input type="number" min="1" id="cfgUmbralA"></div>
+          <div class="field"><label>Tipo B — parque mínimo (desde)</label><input type="number" min="1" id="cfgUmbralB"></div>
+        </div>
+        <p class="hint">A: parque &gt; umbral A · B: entre umbral B y umbral A · C: resto.</p>
+      </fieldset>
+      <fieldset>
+        <legend>Cadencia de visitas (días)</legend>
+        <div class="grid">
+          <div class="field"><label>Tipo A — cada … días</label><input type="number" min="1" id="cfgCadA"></div>
+          <div class="field"><label>Tipo B — cada … días</label><input type="number" min="1" id="cfgCadB"></div>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Usuarios</legend>
+        <p class="hint">La gestión real de usuarios (alta/baja y contraseñas cifradas) forma parte de la versión con servidor. En esta demo los usuarios son fijos: <b>admin</b>, <b>jefe</b> y <b>vendedor</b>.</p>
+      </fieldset>
+    </div>
+    <div class="modal-foot">
+      <span class="spacer"></span>
+      <button class="btn-ghost" onclick="closeConfig()">Cancelar</button>
+      <button class="btn-primary" onclick="saveConfig()">Guardar configuración</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORE='pr_gestion_visitas_v1';
+const CFG_STORE='pr_config_v1';
+const SESS='pr_session_v1';
+
+/* Usuarios DEMO — NO es seguridad real; en la versión servidor irían cifrados en base de datos */
+const USERS=[
+  {user:'admin',    pass:'PRadmin-2026', role:'admin',    nombre:'Administrador'},
+  {user:'jefe',     pass:'PRjefe-2026',  role:'jefe',     nombre:'Jefe de ventas'},
+  {user:'vendedor', pass:'PRvend-2026',  role:'vendedor', nombre:'Vendedor'}
+];
+/* Comerciales disponibles para asignar cartera */
+const COMERCIALES=[
+  {user:'vendedor', nombre:'Vendedor (demo)'},
+  {user:'ana',      nombre:'Ana Souto'},
+  {user:'luis',     nombre:'Luis Vega'}
+];
+/* Parámetros configurables por el Administrador */
+const CFG_DEF={cadenciaA:90, cadenciaB:360, umbralA:50, umbralB:2};
+let CFG=loadCfg();
+function loadCfg(){ try{ return Object.assign({}, CFG_DEF, JSON.parse(localStorage.getItem(CFG_STORE))||{}); }catch(e){ return {...CFG_DEF}; } }
+function saveCfg(){ localStorage.setItem(CFG_STORE, JSON.stringify(CFG)); }
+function CADENCIA_OF(t){ return t==='A'?CFG.cadenciaA:t==='B'?CFG.cadenciaB:0; }
+let session=null;
+
+const SEED=[
+  {
+    id:'demo-a', empresa:'Transportes Vigo Sur, S.L.', contacto:'Manuel Costas', telefono:'986 12 34 56',
+    email:'flota@transvigosur.es', poblacion:'Vigo', nuevo:'no',
+    turismos:20, combTur:'Diésel', furgonetas:45, tamFur:'Tipo 3A', combFur:'Diésel',
+    udsCambiar:12, udsAmpliar:5, marcas:'Renault, Ford, Iveco',
+    comentarios:'Flota de reparto regional. Renuevan por lotes cada primavera. Interés en furgón eléctrico para reparto urbano.',
+    funProspeccion:'Visita 01/04. Confirmado parque de 65 uds. Decisor: Manuel (jefe de flota). Presupuesto de renovación aprobado para Q3.',
+    funOferta:'Enviada oferta por 12 furgonetas Tipo 3A. Pendiente comparativa diésel vs. eléctrico y estudio de renting.',
+    funCierre:'', etapa:'Oferta', ultimaVisita:'2026-04-01', vendedor:'vendedor'
+  },
+  {
+    id:'demo-b', empresa:'Instalaciones Miño, S.L.', contacto:'Laura Prado', telefono:'988 45 67 89',
+    email:'laura@instalacionesmino.es', poblacion:'Ourense', nuevo:'no',
+    turismos:8, combTur:'Gasolina', furgonetas:4, tamFur:'Tipo 2A', combFur:'Diésel',
+    udsCambiar:3, udsAmpliar:2, marcas:'Peugeot, Citroën',
+    comentarios:'Empresa de instalaciones eléctricas. Parque mixto de 12 uds. Ampliación prevista por nuevo contrato de obra.',
+    funProspeccion:'Visita anual. Parque estable, buena relación. Detectada necesidad de 2 furgonetas adicionales.',
+    funOferta:'Presentada oferta por 3 turismos + 2 furgonetas Tipo 2A con financiación a 48 meses.',
+    funCierre:'Cierre en negociación: piden mejorar valor de recompra de 2 unidades usadas. Cita de firma la próxima semana.',
+    etapa:'Cierre', ultimaVisita:'2025-08-25', vendedor:'vendedor'
+  },
+  {
+    id:'demo-c', empresa:'Fontanería García (autónomo)', contacto:'Antonio García', telefono:'699 00 11 22',
+    email:'', poblacion:'Pontevedra', nuevo:'si',
+    turismos:1, combTur:'Gasolina', furgonetas:0, tamFur:'', combFur:'',
+    udsCambiar:1, udsAmpliar:0, marcas:'Dacia',
+    comentarios:'Cliente nuevo, autónomo con 1 vehículo. Bajo potencial → sin programación de visitas, atención bajo demanda.',
+    funProspeccion:'Primer contacto en el concesionario. Interesado en cambiar su vehículo actual por una furgoneta pequeña.',
+    funOferta:'', funCierre:'', etapa:'Prospección', ultimaVisita:'2026-07-30', vendedor:'ana'
+  }
+];
+
+let data=load();
+let sort={key:'proxima', dir:1};
+
+function load(){
+  try{
+    const raw=localStorage.getItem(STORE);
+    if(raw===null){ localStorage.setItem(STORE, JSON.stringify(SEED)); return SEED.slice(); }
+    return JSON.parse(raw)||[];
+  }catch(e){ return []; }
+}
+function save(){ localStorage.setItem(STORE, JSON.stringify(data)); }
+function uid(){ return 'c'+Date.now().toString(36)+Math.floor(performance.now()).toString(36); }
+
+/* ---- Clasificación por parque ---- */
+function tipoDe(parque){ if(parque>CFG.umbralA) return 'A'; if(parque>=CFG.umbralB) return 'B'; return 'C'; }
+function parqueDe(c){ return (+c.turismos||0)+(+c.furgonetas||0); }
+function cadenciaTxt(t){ return t==='A'?`visita cada ${CFG.cadenciaA} días`:t==='B'?`visita cada ${CFG.cadenciaB} días`:'sin programación'; }
+
+/* ---- Fechas ---- */
+function addDays(iso,d){ const dt=new Date(iso+'T00:00:00'); dt.setDate(dt.getDate()+d); return dt; }
+function fmt(dt){ if(!dt) return ''; const d=(dt instanceof Date)?dt:new Date(dt+'T00:00:00'); return d.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+function today0(){ const d=new Date(); d.setHours(0,0,0,0); return d; }
+function proximaDe(c){
+  const t=tipoDe(parqueDe(c));
+  if(t==='C'||!c.ultimaVisita) return null;
+  return addDays(c.ultimaVisita, CADENCIA_OF(t));
+}
+function diasHasta(dt){ return Math.round((dt-today0())/86400000); }
+
+/* ---- Render ---- */
+function render(){
+  const q=(document.getElementById('q').value||'').toLowerCase().trim();
+  const fTipo=document.getElementById('fTipo').value;
+  const fEtapa=document.getElementById('fEtapa').value;
+  const fVenc=document.getElementById('fVenc').checked;
+
+  let list=visibleData().map(c=>{
+    const parque=parqueDe(c), tipo=tipoDe(parque), prox=proximaDe(c);
+    return {...c, parque, tipo, proxima:prox?prox.getTime():Infinity, proxObj:prox};
+  });
+
+  if(q) list=list.filter(c=>[c.empresa,c.poblacion,c.marcas,c.contacto].join(' ').toLowerCase().includes(q));
+  if(fTipo) list=list.filter(c=>c.tipo===fTipo);
+  if(fEtapa) list=list.filter(c=>c.etapa===fEtapa);
+  if(fVenc) list=list.filter(c=>c.proxObj && diasHasta(c.proxObj)<=15);
+
+  list.sort((a,b)=>{
+    let va=a[sort.key], vb=b[sort.key];
+    if(typeof va==='string') va=va.toLowerCase(); if(typeof vb==='string') vb=vb.toLowerCase();
+    if(va<vb) return -1*sort.dir; if(va>vb) return 1*sort.dir; return 0;
+  });
+
+  const rows=document.getElementById('rows');
+  rows.innerHTML='';
+  list.forEach(c=>{
+    let proxHtml='<span class="sin-prog">Sin programación</span>';
+    if(c.proxObj){
+      const d=diasHasta(c.proxObj);
+      let cls='', extra='';
+      if(d<0){ cls='vencida'; extra=` <span class="muted">(vencida ${-d}d)</span>`; }
+      else if(d<=15){ cls='proxima-soon'; extra=` <span class="muted">(en ${d}d)</span>`; }
+      proxHtml=`<span class="${cls}">${fmt(c.proxObj)}</span>${extra}`;
+    }
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td class="empresa-cell" onclick="openModal('${c.id}')">${esc(c.empresa)||'(sin nombre)'}${c.nuevo==='si'?' <span class="muted">· nuevo</span>':''}</td>
+      <td class="hide-sm">${esc(c.poblacion)||'<span class="muted">—</span>'}</td>
+      <td><span class="badge tipo-${c.tipo}">${c.tipo}</span></td>
+      <td class="num">${c.parque}</td>
+      <td class="hide-sm"><span class="etapa etapa-${c.etapa}">${c.etapa}</span></td>
+      <td class="hide-sm">${c.ultimaVisita?fmt(c.ultimaVisita):'<span class="muted">—</span>'}</td>
+      <td>${proxHtml}</td>
+      <td style="text-align:right"><button class="btn-ghost btn-sm" onclick="openModal('${c.id}')">Abrir</button></td>`;
+    rows.appendChild(tr);
+  });
+  document.getElementById('empty').style.display=list.length?'none':'block';
+  renderKpis();
+  if(viewMode==='cal') renderCalendar();
+}
+
+function renderKpis(){
+  const vis=visibleData();
+  const t={A:0,B:0,C:0}; let venc=0;
+  vis.forEach(c=>{ t[tipoDe(parqueDe(c))]++; const p=proximaDe(c); if(p&&diasHasta(p)<0) venc++; });
+  const k=document.getElementById('kpis');
+  k.innerHTML=`
+    <div class="kpi"><div class="n">${vis.length}</div><div class="l">Clientes</div></div>
+    <div class="kpi"><div class="n">${t.A}</div><div class="l">Tipo A · ${CFG.cadenciaA} días</div></div>
+    <div class="kpi"><div class="n">${t.B}</div><div class="l">Tipo B · ${CFG.cadenciaB} días</div></div>
+    <div class="kpi"><div class="n">${t.C}</div><div class="l">Tipo C · sin prog.</div></div>
+    <div class="kpi ${venc?'warn':'ok'}"><div class="n">${venc}</div><div class="l">Visitas vencidas</div></div>`;
+}
+
+function sortBy(key){ if(sort.key===key) sort.dir*=-1; else {sort.key=key; sort.dir=1;} render(); }
+function esc(s){ return (s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
+/* ---- Vista Lista / Calendario ---- */
+let viewMode='lista';
+const _now=new Date();
+let calRef={y:_now.getFullYear(), m:_now.getMonth()};
+const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const DOW=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+
+function setView(v){
+  viewMode=v;
+  document.getElementById('vLista').classList.toggle('active',v==='lista');
+  document.getElementById('vCal').classList.toggle('active',v==='cal');
+  document.getElementById('viewLista').style.display=v==='lista'?'':'none';
+  document.getElementById('viewCal').style.display=v==='cal'?'':'none';
+  render();
+}
+function calMove(dir){
+  if(dir===0){ calRef={y:_now.getFullYear(), m:_now.getMonth()}; }
+  else{ let m=calRef.m+dir, y=calRef.y; if(m<0){m=11;y--;} if(m>11){m=0;y++;} calRef={y,m}; }
+  renderCalendar();
+}
+function renderCalendar(){
+  const dow=document.getElementById('calDow');
+  dow.innerHTML=DOW.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  document.getElementById('calTitle').textContent=`${MESES[calRef.m]} ${calRef.y}`;
+
+  // eventos por día (yyyy-mm-dd) del mes visible, y lista de vencidas global
+  const evByDay={}; const vencidas=[];
+  visibleData().forEach(c=>{
+    const prox=proximaDe(c); if(!prox) return;
+    const t=tipoDe(parqueDe(c));
+    const d=diasHasta(prox);
+    if(d<0) vencidas.push({c,prox,d});
+    if(prox.getFullYear()===calRef.y && prox.getMonth()===calRef.m){
+      const key=prox.getDate();
+      (evByDay[key]=evByDay[key]||[]).push({c,t,venc:d<0});
+    }
+  });
+
+  // strip de vencidas
+  const strip=document.getElementById('vencStrip');
+  if(vencidas.length){
+    vencidas.sort((a,b)=>a.d-b.d);
+    strip.className='venc-strip';
+    strip.innerHTML=`<b>⚠ ${vencidas.length} visita(s) vencida(s):</b> `+
+      vencidas.map(v=>`<span class="item" onclick="openModal('${v.c.id}')">${esc(v.c.empresa)} · ${-v.d}d</span>`).join('');
+  } else { strip.className=''; strip.innerHTML=''; }
+
+  // rejilla: primer día (lunes=0)
+  const first=new Date(calRef.y,calRef.m,1);
+  let startDow=(first.getDay()+6)%7; // lunes primero
+  const daysInMonth=new Date(calRef.y,calRef.m+1,0).getDate();
+  const prevDays=new Date(calRef.y,calRef.m,0).getDate();
+  const cells=[];
+  for(let i=0;i<startDow;i++) cells.push({n:prevDays-startDow+1+i, other:true});
+  for(let d=1;d<=daysInMonth;d++) cells.push({n:d, other:false});
+  while(cells.length%7!==0) cells.push({n:cells.length-startDow-daysInMonth+1, other:true});
+
+  const tY=_now.getFullYear(), tM=_now.getMonth(), tD=_now.getDate();
+  const grid=document.getElementById('calGrid');
+  grid.innerHTML=cells.map(cell=>{
+    const isToday=!cell.other && cell.n===tD && calRef.m===tM && calRef.y===tY;
+    const evs=(!cell.other && evByDay[cell.n])?evByDay[cell.n]:[];
+    const evHtml=evs.map(e=>`<span class="cal-ev ${e.venc?'venc':'tipo-'+e.t} " onclick="openModal('${e.c.id}')" title="${esc(e.c.empresa)}">${esc(e.c.empresa)}</span>`).join('');
+    return `<div class="cal-cell ${cell.other?'other':''} ${isToday?'today':''}"><span class="daynum">${cell.n}</span>${evHtml}</div>`;
+  }).join('');
+}
+
+/* ---- Modal ---- */
+function openModal(id){
+  const ov=document.getElementById('overlay'); ov.classList.add('open');
+  const c=id?data.find(x=>x.id===id):null;
+  document.getElementById('modalTitle').textContent=c?('Ficha: '+(c.empresa||'cliente')):'Nuevo cliente';
+  document.getElementById('delBtn').style.display=c?'inline-block':'none';
+  const g=id=>document.getElementById(id);
+  g('cid').value=c?c.id:'';
+  g('empresa').value=c?.empresa||''; g('contacto').value=c?.contacto||''; g('telefono').value=c?.telefono||'';
+  g('email').value=c?.email||''; g('poblacion').value=c?.poblacion||''; g('nuevo').value=c?.nuevo||'no';
+  g('turismos').value=c?.turismos??0; g('combTur').value=c?.combTur||''; g('furgonetas').value=c?.furgonetas??0;
+  g('tamFur').value=c?.tamFur||''; g('combFur').value=c?.combFur||'';
+  g('udsCambiar').value=c?.udsCambiar??0; g('udsAmpliar').value=c?.udsAmpliar??0;
+  g('marcas').value=c?.marcas||''; g('comentarios').value=c?.comentarios||'';
+  g('funProspeccion').value=c?.funProspeccion||''; g('funOferta').value=c?.funOferta||''; g('funCierre').value=c?.funCierre||'';
+  g('etapa').value=c?.etapa||'Prospección'; g('ultimaVisita').value=c?.ultimaVisita||'';
+  fillComerciales();
+  g('comercial').value = c?.vendedor || (session && session.role==='vendedor' ? session.user : COMERCIALES[0].user);
+  // El vendedor no puede reasignar cartera: se le fija a sí mismo y se bloquea
+  g('comercial').disabled = !!(session && session.role==='vendedor');
+  calcTipo(); updateProxPreview();
+}
+function closeModal(){ document.getElementById('overlay').classList.remove('open'); }
+
+function calcTipo(){
+  const parque=(+document.getElementById('turismos').value||0)+(+document.getElementById('furgonetas').value||0);
+  const t=tipoDe(parque);
+  document.getElementById('parqueTxt').textContent=parque;
+  document.getElementById('tipoTxt').textContent='Tipo '+t;
+  document.getElementById('cadenciaTxt').textContent=cadenciaTxt(t);
+  const b=document.getElementById('tipoBadge'); b.textContent=t; b.className='badge tipo-'+t;
+  updateProxPreview();
+}
+function updateProxPreview(){
+  const parque=(+document.getElementById('turismos').value||0)+(+document.getElementById('furgonetas').value||0);
+  const t=tipoDe(parque); const uv=document.getElementById('ultimaVisita').value;
+  const disp=document.getElementById('proxPreview'), hint=document.getElementById('proxHint');
+  if(t==='C'){ disp.textContent='Sin programación'; disp.className='prox-display sin-prog'; hint.textContent='Los clientes tipo C se visitan sin programación.'; return; }
+  if(!uv){ disp.textContent='—'; disp.className='prox-display'; hint.textContent='Registra la última visita para calcular la próxima.'; return; }
+  const prox=addDays(uv,CADENCIA_OF(t)); const d=diasHasta(prox);
+  disp.textContent=fmt(prox);
+  disp.className='prox-display'+(d<0?' vencida':(d<=15?' proxima-soon':''));
+  hint.textContent=(d<0?`Vencida hace ${-d} días`:`Faltan ${d} días`)+` · cadencia ${CADENCIA_OF(t)} días`;
+}
+function registrarVisitaHoy(){
+  const d=new Date(); const iso=d.toISOString().slice(0,10);
+  document.getElementById('ultimaVisita').value=iso; updateProxPreview();
+}
+
+function saveClient(){
+  const g=id=>document.getElementById(id).value;
+  const empresa=g('empresa').trim();
+  if(!empresa){ alert('Indica el nombre de la empresa.'); document.getElementById('empresa').focus(); return; }
+  const id=g('cid');
+  const obj={
+    id:id||uid(), empresa, contacto:g('contacto').trim(), telefono:g('telefono').trim(),
+    email:g('email').trim(), poblacion:g('poblacion').trim(), nuevo:g('nuevo'),
+    turismos:+g('turismos')||0, combTur:g('combTur'), furgonetas:+g('furgonetas')||0,
+    tamFur:g('tamFur'), combFur:g('combFur'), udsCambiar:+g('udsCambiar')||0, udsAmpliar:+g('udsAmpliar')||0,
+    marcas:g('marcas').trim(), comentarios:g('comentarios').trim(),
+    funProspeccion:g('funProspeccion').trim(), funOferta:g('funOferta').trim(), funCierre:g('funCierre').trim(),
+    etapa:g('etapa'), ultimaVisita:g('ultimaVisita'),
+    vendedor: (session && session.role==='vendedor') ? session.user : (document.getElementById('comercial').value||'')
+  };
+  if(id){ const i=data.findIndex(x=>x.id===id); data[i]=obj; } else { data.push(obj); }
+  save(); closeModal(); render();
+}
+function deleteClient(){
+  const id=document.getElementById('cid').value; if(!id) return;
+  const c=data.find(x=>x.id===id);
+  if(confirm(`¿Eliminar el cliente "${c?.empresa||''}"? Esta acción no se puede deshacer.`)){
+    data=data.filter(x=>x.id!==id); save(); closeModal(); render();
+  }
+}
+
+/* ---- Import / Export ---- */
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(visibleData(),null,2)],{type:'application/json'});
+  dl(blob,'clientes_prospeccion.json');
+}
+function importJSON(e){
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{ const arr=JSON.parse(r.result); if(!Array.isArray(arr)) throw 0;
+    if(confirm(`Importar ${arr.length} clientes? Se añadirán a los actuales.`)){
+      arr.forEach(x=>{ if(!x.id) x.id=uid(); data.push(x); }); save(); render();
+    }
+  }catch(err){ alert('Archivo no válido.'); } e.target.value=''; };
+  r.readAsText(f);
+}
+function exportCSV(){
+  const cols=[['empresa','Empresa'],['comercial','Comercial asignado'],['contacto','Contacto'],['telefono','Teléfono'],['email','Email'],
+    ['poblacion','Población'],['nuevo','Nuevo'],['turismos','Nº turismos'],['combTur','Combustión turismos'],
+    ['furgonetas','Nº furgonetas'],['tamFur','Tamaño furgoneta'],['combFur','Combustión furgonetas'],
+    ['udsCambiar','Uds a cambiar'],['udsAmpliar','Uds a ampliar'],['marcas','Marcas'],['comentarios','Comentarios'],
+    ['etapa','Etapa funnel'],['funProspeccion','Resultado prospección'],['funOferta','Resultado oferta'],
+    ['funCierre','Resultado cierre'],['ultimaVisita','Última visita']];
+  const nomComercial=u=>{ const x=COMERCIALES.find(c=>c.user===u); return x?x.nombre:(u||''); };
+  const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
+  let out=cols.map(c=>q(c[1])).concat([q('Parque'),q('Tipo'),q('Próxima visita')]).join(';')+'\n';
+  visibleData().forEach(c=>{
+    c={...c, comercial:nomComercial(c.vendedor)};
+    const parque=parqueDe(c), t=tipoDe(parque), p=proximaDe(c);
+    out+=cols.map(col=>q(c[col[0]])).concat([q(parque),q(t),q(p?fmt(p):'Sin programación')]).join(';')+'\n';
+  });
+  dl(new Blob(['﻿'+out],{type:'text/csv;charset=utf-8'}),'clientes_prospeccion.csv');
+}
+function dl(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
+
+/* ---- Autenticación y roles (DEMO) ---- */
+function roleName(r){ return r==='admin'?'Administrador':r==='jefe'?'Jefe de ventas':'Vendedor'; }
+function canSeeAll(){ return session && (session.role==='admin'||session.role==='jefe'); }
+function visibleData(){ if(!session) return []; return canSeeAll()?data:data.filter(c=>(c.vendedor||'')===session.user); }
+function fillComerciales(){
+  const sel=document.getElementById('comercial'); if(!sel) return;
+  sel.innerHTML=COMERCIALES.map(c=>`<option value="${c.user}">${esc(c.nombre)}</option>`).join('');
+}
+function doLogin(e){
+  e.preventDefault();
+  const u=document.getElementById('luser').value.trim().toLowerCase();
+  const p=document.getElementById('lpass').value;
+  const found=USERS.find(x=>x.user===u && x.pass===p);
+  if(!found){ document.getElementById('loginErr').textContent='Usuario o contraseña incorrectos.'; return; }
+  session={user:found.user, role:found.role, nombre:found.nombre};
+  sessionStorage.setItem(SESS, JSON.stringify(session));
+  applySession();
+}
+function logout(){ sessionStorage.removeItem(SESS); session=null; closeModal(); closeConfig(); applySession(); }
+function applySession(){
+  const logged=!!session;
+  document.getElementById('loginWrap').style.display=logged?'none':'flex';
+  document.getElementById('appHeader').style.display=logged?'flex':'none';
+  document.getElementById('appMain').style.display=logged?'block':'none';
+  document.body.classList.toggle('locked', !logged);
+  if(logged){
+    document.getElementById('uName').textContent=session.nombre;
+    document.getElementById('uRole').textContent=roleName(session.role);
+    document.getElementById('cfgBtn').style.display=(session.role==='admin')?'inline-block':'none';
+    fillComerciales();
+    render();
+  } else {
+    document.getElementById('lpass').value='';
+    document.getElementById('loginErr').textContent='';
+    const lu=document.getElementById('luser'); if(lu){ lu.value=''; lu.focus(); }
+  }
+}
+
+/* ---- Configuración (solo admin) ---- */
+function openConfig(){
+  if(!session || session.role!=='admin') return;
+  document.getElementById('cfgUmbralA').value=CFG.umbralA;
+  document.getElementById('cfgUmbralB').value=CFG.umbralB;
+  document.getElementById('cfgCadA').value=CFG.cadenciaA;
+  document.getElementById('cfgCadB').value=CFG.cadenciaB;
+  document.getElementById('cfgOverlay').classList.add('open');
+}
+function closeConfig(){ document.getElementById('cfgOverlay').classList.remove('open'); }
+function saveConfig(){
+  const gv=id=>Math.max(1, Math.round(+document.getElementById(id).value||0));
+  const uA=gv('cfgUmbralA'), uB=gv('cfgUmbralB');
+  if(uB>uA){ alert('El parque mínimo de B no puede ser mayor que el umbral de A.'); return; }
+  CFG.umbralA=uA; CFG.umbralB=uB; CFG.cadenciaA=gv('cfgCadA'); CFG.cadenciaB=gv('cfgCadB');
+  saveCfg(); closeConfig(); render();
+}
+
+document.getElementById('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeModal(); });
+document.getElementById('cfgOverlay').addEventListener('click',e=>{ if(e.target.id==='cfgOverlay') closeConfig(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeModal(); closeConfig(); } });
+
+try{ session=JSON.parse(sessionStorage.getItem(SESS))||null; }catch(e){ session=null; }
+applySession();
+</script>
+</body>
+</html>
