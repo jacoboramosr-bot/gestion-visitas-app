@@ -80,6 +80,7 @@
   .vencida{color:var(--rojo); font-weight:700}
   .proxima-soon{color:#8a6d00; font-weight:600}
   .sin-prog{color:#9aa2a9; font-style:italic}
+  .warn-icon{color:var(--rojo); font-weight:700; cursor:help}
 
   /* Modal */
   .overlay{position:fixed; inset:0; background:rgba(0,20,45,.45); display:none; align-items:flex-start; justify-content:center; padding:24px; overflow:auto; z-index:50}
@@ -207,6 +208,7 @@
 
 <main id="appMain" style="display:none">
   <div class="kpis" id="kpis"></div>
+  <div id="fichaStrip"></div>
 
   <div class="toolbar">
     <button class="btn-primary" onclick="openModal()">+ Nuevo cliente</button>
@@ -462,6 +464,15 @@ const SEED=[
     comentarios:'Cliente nuevo, autónomo con 1 vehículo. Bajo potencial → sin programación de visitas, atención bajo demanda.',
     funProspeccion:'Primer contacto en el concesionario. Interesado en cambiar su vehículo actual por una furgoneta pequeña.',
     funOferta:'', funPedido:'', funFidelizacion:'', etapa:'prospeccion', ultimaVisita:'2026-07-30', vendedor:'ana'
+  },
+  {
+    id:'demo-d', empresa:'Automóviles Ría, S.L.', contacto:'', telefono:'986 77 88 99',
+    email:'', poblacion:'Marín', nuevo:'no',
+    turismos:6, combTur:'Diésel', furgonetas:3, tamFur:'Tipo 2A', combFur:'Diésel',
+    udsCambiar:2, udsAmpliar:1, marcas:'',
+    comentarios:'Ejemplo de ALARMA: pasó a Oferta con la ficha incompleta (faltan contacto, marcas y resultado de prospección).',
+    funProspeccion:'', funOferta:'Oferta preliminar enviada por email.', funPedido:'', funFidelizacion:'',
+    etapa:'oferta', ultimaVisita:'2026-05-15', vendedor:'ana'
   }
 ];
 
@@ -494,6 +505,21 @@ const ETAPA_MAP={'Prospección':'prospeccion','Oferta':'oferta','Cierre':'pedido
 function normEtapa(e){ if(!e) return 'prospeccion'; if(ETAPA_MAP[e]) return ETAPA_MAP[e]; return STAGES.some(s=>s.key===e)?e:'prospeccion'; }
 function etapaShort(e){ const s=STAGES.find(x=>x.key===normEtapa(e)); return s?s.short:e; }
 function etapaLabel(e){ const s=STAGES.find(x=>x.key===normEtapa(e)); return s?s.label:e; }
+
+/* ---- Campos obligatorios de la ficha para pasar de Prospección ---- */
+function fichaFaltantes(c){
+  const f=[];
+  if(!(c.contacto||'').trim()) f.push('Persona de contacto');
+  if(!((c.telefono||'').trim() || (c.email||'').trim())) f.push('Teléfono o email');
+  if(!(c.poblacion||'').trim()) f.push('Población');
+  if(parqueDe(c)<=0) f.push('Parque (turismos o furgonetas)');
+  if(!(c.marcas||'').trim()) f.push('Marcas actuales');
+  if(!(c.funProspeccion||'').trim()) f.push('Resultado de Prospección');
+  if(!(c.vendedor||'').trim()) f.push('Comercial asignado');
+  return f;
+}
+function requiereFicha(etapa){ return normEtapa(etapa)!=='prospeccion'; }
+function incumple(c){ return requiereFicha(c.etapa) && fichaFaltantes(c).length>0; }
 
 /* ---- Fechas ---- */
 function addDays(iso,d){ const dt=new Date(iso+'T00:00:00'); dt.setDate(dt.getDate()+d); return dt; }
@@ -542,7 +568,7 @@ function render(){
     }
     const tr=document.createElement('tr');
     tr.innerHTML=`
-      <td class="empresa-cell" onclick="openModal('${c.id}')">${esc(c.empresa)||'(sin nombre)'}${c.nuevo==='si'?' <span class="muted">· nuevo</span>':''}</td>
+      <td class="empresa-cell" onclick="openModal('${c.id}')">${esc(c.empresa)||'(sin nombre)'}${c.nuevo==='si'?' <span class="muted">· nuevo</span>':''}${incumple(c)?` <span class="warn-icon" title="Ficha incompleta para la fase «${etapaShort(c.etapa)}»">⚠</span>`:''}</td>
       <td class="hide-sm">${esc(c.poblacion)||'<span class="muted">—</span>'}</td>
       <td><span class="badge tipo-${c.tipo}">${c.tipo}</span></td>
       <td class="num">${c.parque}</td>
@@ -553,21 +579,32 @@ function render(){
     rows.appendChild(tr);
   });
   document.getElementById('empty').style.display=list.length?'none':'block';
+
+  // Alarma: empresas en Oferta+ con ficha incompleta (dentro de lo que ve el usuario)
+  const alerta=visibleData().filter(incumple);
+  const fs=document.getElementById('fichaStrip');
+  if(alerta.length){
+    fs.className='venc-strip';
+    fs.innerHTML=`<b>⚠ ${alerta.length} empresa(s) en Oferta o posterior con la ficha incompleta:</b> `+
+      alerta.map(c=>`<span class="item" onclick="openModal('${c.id}')">${esc(c.empresa)}</span>`).join('');
+  } else { fs.className=''; fs.innerHTML=''; }
+
   renderKpis();
   if(viewMode==='cal') renderCalendar();
 }
 
 function renderKpis(){
   const vis=visibleData();
-  const t={A:0,B:0,C:0}; let venc=0;
-  vis.forEach(c=>{ t[tipoDe(parqueDe(c))]++; const p=proximaDe(c); if(p&&diasHasta(p)<0) venc++; });
+  const t={A:0,B:0,C:0}; let venc=0, incompl=0;
+  vis.forEach(c=>{ t[tipoDe(parqueDe(c))]++; const p=proximaDe(c); if(p&&diasHasta(p)<0) venc++; if(incumple(c)) incompl++; });
   const k=document.getElementById('kpis');
   k.innerHTML=`
     <div class="kpi"><div class="n">${vis.length}</div><div class="l">Clientes</div></div>
     <div class="kpi"><div class="n">${t.A}</div><div class="l">Tipo A · ${CFG.cadenciaA} días</div></div>
     <div class="kpi"><div class="n">${t.B}</div><div class="l">Tipo B · ${CFG.cadenciaB} días</div></div>
     <div class="kpi"><div class="n">${t.C}</div><div class="l">Tipo C · sin prog.</div></div>
-    <div class="kpi ${venc?'warn':'ok'}"><div class="n">${venc}</div><div class="l">Visitas vencidas</div></div>`;
+    <div class="kpi ${venc?'warn':'ok'}"><div class="n">${venc}</div><div class="l">Visitas vencidas</div></div>
+    <div class="kpi ${incompl?'warn':'ok'}"><div class="n">${incompl}</div><div class="l">Fichas incompletas · Oferta+</div></div>`;
 }
 
 function sortBy(key){ if(sort.key===key) sort.dir*=-1; else {sort.key=key; sort.dir=1;} render(); }
@@ -706,6 +743,13 @@ function saveClient(){
     etapa:g('etapa'), ultimaVisita:g('ultimaVisita'),
     vendedor: (session && session.role==='vendedor') ? session.user : (document.getElementById('comercial').value||'')
   };
+  if(requiereFicha(obj.etapa)){
+    const falta=fichaFaltantes(obj);
+    if(falta.length){
+      alert('No se puede guardar la empresa en la fase «'+etapaLabel(obj.etapa)+'» con la ficha incompleta.\n\nFaltan campos obligatorios:\n· '+falta.join('\n· ')+'\n\nComplétalos, o deja la empresa en la fase «Prospección (Nuevo Cliente)» hasta tener la ficha.');
+      return;
+    }
+  }
   if(id){ const i=data.findIndex(x=>x.id===id); data[i]=obj; } else { data.push(obj); }
   save(); closeModal(); render();
 }
