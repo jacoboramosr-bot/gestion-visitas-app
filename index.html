@@ -184,6 +184,22 @@
   .login-brands{display:flex; align-items:center; justify-content:center; gap:16px; flex-wrap:wrap; margin-top:16px; padding-top:14px; border-top:1px solid var(--linea)}
   .login-brands img{height:20px; width:auto; opacity:.75}
 
+  /* Cuadro de mando */
+  .dash-wrap{display:grid; gap:16px}
+  .dash-card{padding:0}
+  .dash-h{font-weight:700; color:var(--azul); padding:14px 16px; border-bottom:1px solid var(--linea); font-size:15px}
+  .dash-body{padding:14px 16px}
+  .bar-row{display:flex; align-items:center; gap:12px; margin:9px 0}
+  .bar-row .bl{width:120px; font-size:13px; font-weight:600; color:var(--gris)}
+  .bar-row .bt{flex:1; background:#eef1f4; border-radius:4px; height:18px; overflow:hidden}
+  .bar-row .bf{height:100%; border-radius:4px}
+  .bar-row .bv{width:88px; text-align:right; font-variant-numeric:tabular-nums; font-size:13px; color:var(--gris)}
+  .dash-tot{margin-top:12px; padding-top:10px; border-top:1px solid var(--linea); font-size:13px; color:var(--gris)}
+  .minibar{position:relative; background:#eef1f4; border-radius:4px; height:20px; min-width:110px}
+  .minibar .mf{position:absolute; left:0; top:0; bottom:0; background:var(--azul-claro); border-radius:4px}
+  .minibar span{position:absolute; right:7px; top:0; line-height:20px; font-size:12px; font-weight:700; color:var(--gris)}
+  .tablewrap{overflow-x:auto}
+
   @media(max-width:980px){ .funnel{grid-template-columns:repeat(2,1fr)} }
   @media(max-width:720px){ .funnel{grid-template-columns:1fr} th.hide-sm,td.hide-sm{display:none} .cal-cell{min-height:72px} }
 </style>
@@ -239,6 +255,7 @@
     <span class="viewtoggle">
       <button id="vLista" class="active" onclick="setView('lista')">📋 Lista</button>
       <button id="vCal" onclick="setView('cal')">📅 Calendario</button>
+      <button id="vDash" style="display:none" onclick="setView('dash')">📊 Cuadro de mando</button>
     </span>
     <input type="search" id="q" placeholder="Buscar empresa, población, marca…" oninput="render()">
     <select id="fTipo" onchange="render()">
@@ -297,6 +314,19 @@
         <span><span class="dot" style="background:var(--azul-claro)"></span>Tipo B (360 días)</span>
         <span><span class="dot" style="background:var(--rojo)"></span>Vencida</span>
         <span class="muted">Los clientes tipo C no se programan.</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="viewDash" style="display:none">
+    <div class="dash-wrap">
+      <div class="card dash-card">
+        <div class="dash-h">Reparto de cartera por fase del funnel</div>
+        <div class="dash-body" id="dashPhases"></div>
+      </div>
+      <div class="card dash-card">
+        <div class="dash-h">Reparto de cartera por vendedor</div>
+        <div class="tablewrap"><table id="dashVend"></table></div>
       </div>
     </div>
   </div>
@@ -615,6 +645,7 @@ function render(){
 
   renderKpis();
   if(viewMode==='cal') renderCalendar();
+  if(viewMode==='dash') renderDashboard();
 }
 
 function renderKpis(){
@@ -645,8 +676,10 @@ function setView(v){
   viewMode=v;
   document.getElementById('vLista').classList.toggle('active',v==='lista');
   document.getElementById('vCal').classList.toggle('active',v==='cal');
+  document.getElementById('vDash').classList.toggle('active',v==='dash');
   document.getElementById('viewLista').style.display=v==='lista'?'':'none';
   document.getElementById('viewCal').style.display=v==='cal'?'':'none';
+  document.getElementById('viewDash').style.display=v==='dash'?'':'none';
   render();
 }
 function calMove(dir){
@@ -699,6 +732,44 @@ function renderCalendar(){
     const evHtml=evs.map(e=>`<span class="cal-ev ${e.venc?'venc':'tipo-'+e.t} " onclick="openModal('${e.c.id}')" title="${esc(e.c.empresa)}">${esc(e.c.empresa)}</span>`).join('');
     return `<div class="cal-cell ${cell.other?'other':''} ${isToday?'today':''}"><span class="daynum">${cell.n}</span>${evHtml}</div>`;
   }).join('');
+}
+
+/* ---- Cuadro de mando (Jefe/Admin) ---- */
+const PHASE_COLOR={prospeccion:'#595959', oferta:'#FFC000', pedido:'#002B5C', fidelizacion:'#70AD47'};
+function renderDashboard(){
+  const vis=visibleData();
+  const total=vis.length;
+  // Reparto por fase
+  const pc={prospeccion:0,oferta:0,pedido:0,fidelizacion:0};
+  vis.forEach(c=>{ pc[normEtapa(c.etapa)]++; });
+  const maxP=Math.max(1, ...STAGES.map(s=>pc[s.key]));
+  document.getElementById('dashPhases').innerHTML =
+    STAGES.map(s=>{
+      const n=pc[s.key], pct=total?Math.round(n*100/total):0, w=Math.round(n*100/maxP);
+      return `<div class="bar-row"><div class="bl">${s.short}</div><div class="bt"><div class="bf" style="width:${w}%;background:${PHASE_COLOR[s.key]}"></div></div><div class="bv">${n} · ${pct}%</div></div>`;
+    }).join('') +
+    `<div class="dash-tot">Total cartera: <b>${total}</b> empresa(s)</div>`;
+
+  // Reparto por vendedor
+  const groups={};
+  vis.forEach(c=>{ const v=c.vendedor||'__none__'; (groups[v]=groups[v]||[]).push(c); });
+  const nom=u=>{ if(u==='__none__') return 'Sin asignar'; const x=COMERCIALES.find(c=>c.user===u); return x?x.nombre:u; };
+  const rows=Object.keys(groups).map(v=>{
+    const arr=groups[v], t={A:0,B:0,C:0}, ph={prospeccion:0,oferta:0,pedido:0,fidelizacion:0}; let inc=0;
+    arr.forEach(c=>{ t[tipoDe(parqueDe(c))]++; ph[normEtapa(c.etapa)]++; if(incumple(c)) inc++; });
+    return {nombre:nom(v), total:arr.length, t, ph, inc};
+  }).sort((a,b)=>b.total-a.total);
+  const maxT=Math.max(1, ...rows.map(r=>r.total));
+  let h=`<thead><tr><th>Comercial</th><th>Total</th><th>A</th><th>B</th><th>C</th><th>Prosp.</th><th>Oferta</th><th>Pedido</th><th>Fidel.</th><th>⚠ Fichas</th></tr></thead><tbody>`;
+  h+=rows.map(r=>`<tr>
+      <td style="font-weight:600">${esc(r.nombre)}</td>
+      <td><div class="minibar"><div class="mf" style="width:${Math.round(r.total*100/maxT)}%"></div><span>${r.total}</span></div></td>
+      <td class="num">${r.t.A}</td><td class="num">${r.t.B}</td><td class="num">${r.t.C}</td>
+      <td class="num">${r.ph.prospeccion}</td><td class="num">${r.ph.oferta}</td><td class="num">${r.ph.pedido}</td><td class="num">${r.ph.fidelizacion}</td>
+      <td class="num">${r.inc?`<span class="warn-icon" title="Fichas incompletas en Oferta+">${r.inc}</span>`:'0'}</td>
+    </tr>`).join('');
+  h+=`</tbody>`;
+  document.getElementById('dashVend').innerHTML=h;
 }
 
 /* ---- Modal ---- */
@@ -848,8 +919,9 @@ function applySession(){
     document.getElementById('uName').textContent=session.nombre;
     document.getElementById('uRole').textContent=roleName(session.role);
     document.getElementById('cfgBtn').style.display=(session.role==='admin')?'inline-block':'none';
+    document.getElementById('vDash').style.display=canSeeAll()?'inline-block':'none';
     fillComerciales();
-    render();
+    setView('lista');
   } else {
     document.getElementById('lpass').value='';
     document.getElementById('loginErr').textContent='';
