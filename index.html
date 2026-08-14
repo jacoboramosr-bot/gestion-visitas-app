@@ -72,9 +72,10 @@
   .tipo-B{background:var(--azul-claro)}
   .tipo-C{background:var(--gris)}
   .etapa{display:inline-block; padding:2px 8px; border-radius:4px; font-size:12px; font-weight:600; border:1px solid}
-  .etapa-Prospección{color:var(--gris); border-color:var(--gris-claro); background:#fafafa}
-  .etapa-Oferta{color:#8a6d00; border-color:var(--amarillo); background:#fff8e1}
-  .etapa-Cierre{color:var(--verde); border-color:var(--verde); background:#f1f8ec}
+  .etapa-prospeccion{color:var(--gris); border-color:var(--gris-claro); background:#fafafa}
+  .etapa-oferta{color:#8a6d00; border-color:var(--amarillo); background:#fff8e1}
+  .etapa-pedido{color:var(--azul); border-color:var(--azul-claro); background:#eef4fb}
+  .etapa-fidelizacion{color:var(--verde); border-color:var(--verde); background:#f1f8ec}
   .dot{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; vertical-align:middle}
   .vencida{color:var(--rojo); font-weight:700}
   .proxima-soon{color:#8a6d00; font-weight:600}
@@ -107,12 +108,13 @@
   .tipo-auto b{color:var(--azul)}
 
   /* Funnel */
-  .funnel{display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
+  .funnel{display:grid; grid-template-columns:repeat(4,1fr); gap:12px}
   .funnel .stage{border:1px solid var(--linea); border-radius:8px; overflow:hidden}
   .funnel .stage h3{margin:0; padding:8px 12px; font-size:13px; color:#fff; display:flex; align-items:center; gap:8px}
   .funnel .stage.s1 h3{background:var(--gris)}
   .funnel .stage.s2 h3{background:var(--azul-claro)}
-  .funnel .stage.s3 h3{background:var(--verde)}
+  .funnel .stage.s3 h3{background:var(--azul)}
+  .funnel .stage.s4 h3{background:var(--verde)}
   .funnel .stage textarea{border:none; width:100%; min-height:110px; padding:10px 12px; resize:vertical; font:inherit; color:var(--gris)}
   .funnel .stage textarea:focus{outline:none; background:#fbfdff}
 
@@ -173,6 +175,7 @@
   header .btn-head{background:rgba(255,255,255,.14); color:#fff; border:1px solid rgba(255,255,255,.4); padding:6px 12px; font-size:12px}
   header .btn-head:hover{background:rgba(255,255,255,.28)}
 
+  @media(max-width:980px){ .funnel{grid-template-columns:repeat(2,1fr)} }
   @media(max-width:720px){ .funnel{grid-template-columns:1fr} th.hide-sm,td.hide-sm{display:none} .cal-cell{min-height:72px} }
 </style>
 </head>
@@ -220,9 +223,10 @@
     </select>
     <select id="fEtapa" onchange="render()">
       <option value="">Todas las etapas</option>
-      <option>Prospección</option>
-      <option>Oferta</option>
-      <option>Cierre</option>
+      <option value="prospeccion">Prospección</option>
+      <option value="oferta">Oferta</option>
+      <option value="pedido">Pedido</option>
+      <option value="fidelizacion">Fidelización</option>
     </select>
     <label class="chk"><input type="checkbox" id="fVenc" onchange="render()"> Solo visitas vencidas/próximas</label>
     <span class="spacer"></span>
@@ -333,9 +337,10 @@
       <fieldset>
         <legend>Funnel de gestión — resultado de la visita en cada fase</legend>
         <div class="funnel">
-          <div class="stage s1"><h3>1 · Prospección</h3><textarea id="funProspeccion" placeholder="Resultado de la visita de prospección…"></textarea></div>
+          <div class="stage s1"><h3>1 · Prospección (Nuevo Cliente)</h3><textarea id="funProspeccion" placeholder="Resultado de la visita de prospección…"></textarea></div>
           <div class="stage s2"><h3>2 · Oferta</h3><textarea id="funOferta" placeholder="Resultado de la visita / oferta presentada…"></textarea></div>
-          <div class="stage s3"><h3>3 · Cierre</h3><textarea id="funCierre" placeholder="Resultado del cierre…"></textarea></div>
+          <div class="stage s3"><h3>3 · Pedido</h3><textarea id="funPedido" placeholder="Resultado / detalle del pedido…"></textarea></div>
+          <div class="stage s4"><h3>4 · Visita de Fidelización</h3><textarea id="funFidelizacion" placeholder="Resultado de la visita de fidelización…"></textarea></div>
         </div>
       </fieldset>
 
@@ -343,7 +348,12 @@
         <legend>Gestión de visitas</legend>
         <div class="visit-box">
           <div class="field"><label>Etapa actual del funnel</label>
-            <select id="etapa"><option>Prospección</option><option>Oferta</option><option>Cierre</option></select>
+            <select id="etapa">
+              <option value="prospeccion">Prospección (Nuevo Cliente)</option>
+              <option value="oferta">Oferta</option>
+              <option value="pedido">Pedido</option>
+              <option value="fidelizacion">Visita de Fidelización</option>
+            </select>
           </div>
           <div class="field"><label>Fecha última visita</label><input type="date" id="ultimaVisita" oninput="updateProxPreview()"></div>
           <div class="field">
@@ -431,7 +441,7 @@ const SEED=[
     comentarios:'Flota de reparto regional. Renuevan por lotes cada primavera. Interés en furgón eléctrico para reparto urbano.',
     funProspeccion:'Visita 01/04. Confirmado parque de 65 uds. Decisor: Manuel (jefe de flota). Presupuesto de renovación aprobado para Q3.',
     funOferta:'Enviada oferta por 12 furgonetas Tipo 3A. Pendiente comparativa diésel vs. eléctrico y estudio de renting.',
-    funCierre:'', etapa:'Oferta', ultimaVisita:'2026-04-01', vendedor:'vendedor'
+    funPedido:'', funFidelizacion:'', etapa:'oferta', ultimaVisita:'2026-04-01', vendedor:'vendedor'
   },
   {
     id:'demo-b', empresa:'Instalaciones Miño, S.L.', contacto:'Laura Prado', telefono:'988 45 67 89',
@@ -441,8 +451,8 @@ const SEED=[
     comentarios:'Empresa de instalaciones eléctricas. Parque mixto de 12 uds. Ampliación prevista por nuevo contrato de obra.',
     funProspeccion:'Visita anual. Parque estable, buena relación. Detectada necesidad de 2 furgonetas adicionales.',
     funOferta:'Presentada oferta por 3 turismos + 2 furgonetas Tipo 2A con financiación a 48 meses.',
-    funCierre:'Cierre en negociación: piden mejorar valor de recompra de 2 unidades usadas. Cita de firma la próxima semana.',
-    etapa:'Cierre', ultimaVisita:'2025-08-25', vendedor:'vendedor'
+    funPedido:'Pedido en negociación: piden mejorar valor de recompra de 2 unidades usadas. Cita de firma la próxima semana.',
+    funFidelizacion:'', etapa:'pedido', ultimaVisita:'2025-08-25', vendedor:'vendedor'
   },
   {
     id:'demo-c', empresa:'Fontanería García (autónomo)', contacto:'Antonio García', telefono:'699 00 11 22',
@@ -451,7 +461,7 @@ const SEED=[
     udsCambiar:1, udsAmpliar:0, marcas:'Dacia',
     comentarios:'Cliente nuevo, autónomo con 1 vehículo. Bajo potencial → sin programación de visitas, atención bajo demanda.',
     funProspeccion:'Primer contacto en el concesionario. Interesado en cambiar su vehículo actual por una furgoneta pequeña.',
-    funOferta:'', funCierre:'', etapa:'Prospección', ultimaVisita:'2026-07-30', vendedor:'ana'
+    funOferta:'', funPedido:'', funFidelizacion:'', etapa:'prospeccion', ultimaVisita:'2026-07-30', vendedor:'ana'
   }
 ];
 
@@ -472,6 +482,18 @@ function uid(){ return 'c'+Date.now().toString(36)+Math.floor(performance.now())
 function tipoDe(parque){ if(parque>CFG.umbralA) return 'A'; if(parque>=CFG.umbralB) return 'B'; return 'C'; }
 function parqueDe(c){ return (+c.turismos||0)+(+c.furgonetas||0); }
 function cadenciaTxt(t){ return t==='A'?`visita cada ${CFG.cadenciaA} días`:t==='B'?`visita cada ${CFG.cadenciaB} días`:'sin programación'; }
+
+/* ---- Etapas del funnel ---- */
+const STAGES=[
+  {key:'prospeccion',  label:'Prospección (Nuevo Cliente)', short:'Prospección'},
+  {key:'oferta',       label:'Oferta',                      short:'Oferta'},
+  {key:'pedido',       label:'Pedido',                      short:'Pedido'},
+  {key:'fidelizacion', label:'Visita de Fidelización',      short:'Fidelización'}
+];
+const ETAPA_MAP={'Prospección':'prospeccion','Oferta':'oferta','Cierre':'pedido','Pedido':'pedido','Fidelización':'fidelizacion'};
+function normEtapa(e){ if(!e) return 'prospeccion'; if(ETAPA_MAP[e]) return ETAPA_MAP[e]; return STAGES.some(s=>s.key===e)?e:'prospeccion'; }
+function etapaShort(e){ const s=STAGES.find(x=>x.key===normEtapa(e)); return s?s.short:e; }
+function etapaLabel(e){ const s=STAGES.find(x=>x.key===normEtapa(e)); return s?s.label:e; }
 
 /* ---- Fechas ---- */
 function addDays(iso,d){ const dt=new Date(iso+'T00:00:00'); dt.setDate(dt.getDate()+d); return dt; }
@@ -524,7 +546,7 @@ function render(){
       <td class="hide-sm">${esc(c.poblacion)||'<span class="muted">—</span>'}</td>
       <td><span class="badge tipo-${c.tipo}">${c.tipo}</span></td>
       <td class="num">${c.parque}</td>
-      <td class="hide-sm"><span class="etapa etapa-${c.etapa}">${c.etapa}</span></td>
+      <td class="hide-sm"><span class="etapa etapa-${normEtapa(c.etapa)}">${etapaShort(c.etapa)}</span></td>
       <td class="hide-sm">${c.ultimaVisita?fmt(c.ultimaVisita):'<span class="muted">—</span>'}</td>
       <td>${proxHtml}</td>
       <td style="text-align:right"><button class="btn-ghost btn-sm" onclick="openModal('${c.id}')">Abrir</button></td>`;
@@ -632,8 +654,9 @@ function openModal(id){
   g('tamFur').value=c?.tamFur||''; g('combFur').value=c?.combFur||'';
   g('udsCambiar').value=c?.udsCambiar??0; g('udsAmpliar').value=c?.udsAmpliar??0;
   g('marcas').value=c?.marcas||''; g('comentarios').value=c?.comentarios||'';
-  g('funProspeccion').value=c?.funProspeccion||''; g('funOferta').value=c?.funOferta||''; g('funCierre').value=c?.funCierre||'';
-  g('etapa').value=c?.etapa||'Prospección'; g('ultimaVisita').value=c?.ultimaVisita||'';
+  g('funProspeccion').value=c?.funProspeccion||''; g('funOferta').value=c?.funOferta||'';
+  g('funPedido').value=c?.funPedido||''; g('funFidelizacion').value=c?.funFidelizacion||'';
+  g('etapa').value=normEtapa(c?.etapa); g('ultimaVisita').value=c?.ultimaVisita||'';
   fillComerciales();
   g('comercial').value = c?.vendedor || (session && session.role==='vendedor' ? session.user : COMERCIALES[0].user);
   // El vendedor no puede reasignar cartera: se le fija a sí mismo y se bloquea
@@ -678,7 +701,8 @@ function saveClient(){
     turismos:+g('turismos')||0, combTur:g('combTur'), furgonetas:+g('furgonetas')||0,
     tamFur:g('tamFur'), combFur:g('combFur'), udsCambiar:+g('udsCambiar')||0, udsAmpliar:+g('udsAmpliar')||0,
     marcas:g('marcas').trim(), comentarios:g('comentarios').trim(),
-    funProspeccion:g('funProspeccion').trim(), funOferta:g('funOferta').trim(), funCierre:g('funCierre').trim(),
+    funProspeccion:g('funProspeccion').trim(), funOferta:g('funOferta').trim(),
+    funPedido:g('funPedido').trim(), funFidelizacion:g('funFidelizacion').trim(),
     etapa:g('etapa'), ultimaVisita:g('ultimaVisita'),
     vendedor: (session && session.role==='vendedor') ? session.user : (document.getElementById('comercial').value||'')
   };
@@ -714,12 +738,12 @@ function exportCSV(){
     ['furgonetas','Nº furgonetas'],['tamFur','Tamaño furgoneta'],['combFur','Combustión furgonetas'],
     ['udsCambiar','Uds a cambiar'],['udsAmpliar','Uds a ampliar'],['marcas','Marcas'],['comentarios','Comentarios'],
     ['etapa','Etapa funnel'],['funProspeccion','Resultado prospección'],['funOferta','Resultado oferta'],
-    ['funCierre','Resultado cierre'],['ultimaVisita','Última visita']];
+    ['funPedido','Resultado pedido'],['funFidelizacion','Resultado fidelización'],['ultimaVisita','Última visita']];
   const nomComercial=u=>{ const x=COMERCIALES.find(c=>c.user===u); return x?x.nombre:(u||''); };
   const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
   let out=cols.map(c=>q(c[1])).concat([q('Parque'),q('Tipo'),q('Próxima visita')]).join(';')+'\n';
   visibleData().forEach(c=>{
-    c={...c, comercial:nomComercial(c.vendedor)};
+    c={...c, comercial:nomComercial(c.vendedor), etapa:etapaLabel(c.etapa)};
     const parque=parqueDe(c), t=tipoDe(parque), p=proximaDe(c);
     out+=cols.map(col=>q(c[col[0]])).concat([q(parque),q(t),q(p?fmt(p):'Sin programación')]).join(';')+'\n';
   });
