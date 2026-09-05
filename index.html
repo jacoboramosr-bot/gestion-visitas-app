@@ -219,6 +219,9 @@
   .hist-who{font-weight:600}
   .hist-text{font-size:13px; color:#333; white-space:normal}
   .hist-empty{color:#9aa2a9; font-style:italic; font-size:13px; padding:8px 0}
+  .aprob-item{display:flex; align-items:center; gap:12px; justify-content:space-between; border:1px solid var(--linea); border-left:3px solid var(--rojo); border-radius:8px; padding:10px 12px; margin-bottom:8px; flex-wrap:wrap}
+  .aprob-info{min-width:220px; flex:1}
+  .aprob-actions{display:flex; gap:6px; flex-wrap:wrap}
 
   @media(max-width:980px){ .funnel{grid-template-columns:repeat(2,1fr)} }
   @media(max-width:720px){ .funnel{grid-template-columns:1fr} th.hide-sm,td.hide-sm{display:none} .cal-cell{min-height:72px} }
@@ -252,6 +255,7 @@
   <span class="logo">FM</span>
   <h1>Fiateira Motor <span style="font-weight:400;opacity:.75;font-size:13px">· Gestión de Prospección y Visitas</span></h1>
   <div class="userbox">
+    <button class="btn-head" id="aprobBtn" style="display:none" onclick="openAprob()">🔐 Aprobaciones <span id="aprobCount"></span></button>
     <button class="btn-head" id="cfgBtn" style="display:none" onclick="openConfig()">⚙ Configuración</button>
     <div class="who"><b id="uName">—</b><br><span class="role-badge" id="uRole">—</span></div>
     <button class="btn-head" onclick="logout()">Salir</button>
@@ -268,6 +272,7 @@
     <img src="data:image/svg+xml;base64,PHN2ZyByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+UGV1Z2VvdDwvdGl0bGU+PHBhdGggZD0iTTEyLjAwMDEgMGMzLjQ5OSAwIDcuMTMwOC4yOTg3IDEwLjgxNzEuOTM0OS4wNTUgMS40Nzc4LjExNzUgMy43NjIuMDEyNiA1LjcwMDQtLjIzNDkgNC4zMjE3LTEuMTg2MSA3LjY3Ni0yLjk5NDMgMTAuNTU2NC0xLjgwMjYgMi44NzItNC41OTM4IDUuMzQxNi03LjgzNTQgNi44MDgzLTMuMjQxNi0xLjQ2NjctNi4wMzMxLTMuOTM2Mi03LjgzNTYtNi44MDgzLTEuODA4LTIuODgwNC0yLjc1OTQtNi4yMzQ4LTIuOTk0MS0xMC41NTY0LS4xMDUzLTEuOTM4My0uMDQyNy00LjIyMjYuMDEyNC01LjcwMDRDNC44NjkxLjI5ODcgOC41MDExIDAgMTIuMDAwMSAwem0wIC40MTYzYy0zLjQ0OTQgMC02Ljk1MTQuMjkzMy0xMC40MTM5Ljg3MjItLjA3NiAyLjE5MjMtLjA3NiAzLjkzNjctLjAwMDUgNS4zMjQzLjIzMDUgNC4yNDggMS4xNjE5IDcuNTM5NCAyLjkzMDkgMTAuMzU3NSAxLjc2ODggMi44MTc5IDQuNDIxIDUuMTQ1NyA3LjQ4MzUgNi41NzE4IDMuMDYyMi0xLjQyNjEgNS43MTQ3LTMuNzUzOSA3LjQ4MzUtNi41NzE4IDEuNzY5LTIuODE4MiAyLjcwMDEtNi4xMDk1IDIuOTMwOS0xMC4zNTc1LjA3NTUtMS4zODc2LjA3NTUtMy4xMzItLjAwMDUtNS4zMjQzQzE4Ljk1MTUuNzA5NiAxNS40NDkzLjQxNjMgMTIuMDAwMS40MTYzek0xMS45NyAxMy4wMzYxcy4wNjgxLjQwNDUuMDg4OC41MjE4Yy4wMTE2LjA2NjUuMDE0MS4wODQzLS4wMDI3LjE0OTUtLjA0NzcuMTY5NS0uMzYzMyAxLjU5LS41Mzg1IDIuNjI1OC0uMDgyMi40NzY3LS4xNTMzLjk0OTgtLjE5NDcgMS4zNTQ2LS4wMjM0LjIzLS4wMTU4LjI4NTEuMDQ0OS40ODkyLjE3Mi41NzY3LjgwODIgMi4wODM0LjkzMDQgMi4zNTgxYS4zMjg4LjMyODggMCAwIDEgLjAyNTcuMDk1MWwuMDQ1OS4zNTUzYy0uMjAzOC0uMzA4MS0xLjMxMTUtMi4zNDU4LTEuNzQ2NS0zLjQ3NDItLjA1MTMtLjEzMjktLjA2MTItLjE5ODQtLjAwNDQtLjQ0MjguMzAyNS0xLjI5NjIgMS4xMjExLTMuNDk5MiAxLjM1MTEtNC4wMzI0em0tMS42MTUzLTMuMTMxN2MuMDMxMi4wOTEzLjI5MDkuOTgwNS4zMTA3IDEuMTkxOS4wMTYuMTE3NC4wMTMzLjE0OS0uMDI4NC4yNjE0LS4yMjc2LjYwNi0uOTE1OSAyLjExMjktMS4xODE0IDIuNjE2MS0uMDU5LjExMDctLjExNDUuMTgyOC0uMjI1Ni4yOTU4LS4yNTM1LjI1ODItLjczODYuNzQ2Mi0xLjAzOSAxLjAxOTItLjEwOTEuMDk5My0uMTM4NS4xODQxLS4xNjA3LjMxMjYtLjAzNTguMjA2My0uMDcxMy41NTg0LS4wODEyLjc0MDItLjAwODYuMTU5OS4wMTczLjIzNDcuMTA2NC4zOTMxLjUyOTQuOTQ1MSAyLjI5NjYgMy4xMTk0IDIuODAwMSAzLjU3Ni4wMzY1LjAzMzEuMDYzMi4wNTUzLjE0MDIuMTA2NS4wNzQuMDQ5NC4zMTU0LjIwNjEuMzE1NC4yMDYxYS4wODUuMDg1IDAgMCAxIC4wMjM5LjAyNTdsLjA4NzQuMTUzOWMtLjIyNTYtLjExMjMtLjU4NzQtLjI5MjgtLjc3NDItLjM5MjlhLjc1MjcuNzUyNyAwIDAgMS0uMTI0OS0uMDg0NWMtLjU4OTYtLjQ5MDItMi4zOTYzLTIuNjA2NC0yLjkyNzctMy40OS0uMTMyNS0uMjIwNi0uMTQ2MS0uMjkyLS4xMjgzLS41MDA4LjAzMzMtLjM4ODcuMDg0OS0uODc3NC4xMzAxLTEuMDkxNi4wMjc0LS4xMjkyLjA1NTgtLjIwNTEuMTU0Ny0uMzE5Mi43NTMzLS44NjQ4IDIuMjA1OS0yLjc3NDMgMi42MjkzLTMuNTkwOC4wNDcxLS4wOTI0LjA1MTEtLjEyNDUuMDUyMS0uMjExNy4wMDI3LS4yNTMtLjA3OC0uNzQ1Ny0uMDk5Mi0uODcwMmEuMjM4NS4yMzg1IDAgMCAxLS4wMDI1LS4wNTkxbC4wMjI4LS4yODc3em00LjkzMS0uNDc0OGMuMDgxMi4wMzc3LjIxMzcuMDgwMS4yNzMyLjE1MDIuOTM2Ni45Nzg0IDEuNjg1NiAxLjk5MjkgMS44MzU2IDIuMjYwMy4wMjg5LjA1MTQuMDQ4Ni4xMDI4LjA1NTguMTYxNi4xNjgzIDEuNDI2OS4wMjM3IDIuOTM4NS0uMzIwMSA0LjI1MzUtLjAzMTEuMTE4Ni0uMDY1OS4xNzk0LS4xNzk5LjI2NTEtLjc2MDcuNTcxMy0yLjU2ODkgMi4wNzE2LTMuMTc2IDIuNjI5N2EuOTk2Ljk5NiAwIDAgMC0uMTcxOC4yMDg4Yy0uMTUzLjI1MTEtLjM0MTkuNjAxMi0uNDYyLjgyNS0uMTIzNC0uMjY5Ni0uMzkyNC0uOTI3My0uNDg0Ny0xLjE5MzEtLjAzMDEtLjA4NjctLjAzNTUtLjEzMjItLjAwMzctLjI0ODMuMTUwNS0uNTUxMi44NjItMi4xNTM4IDEuMDAwNS0yLjQ0MzYtLjAwMTguMDM3Mi4wMDYzLjEzNDctLjAwNzkuMTY5My0uMDYyNC4xODk1LS40NDUgMS40NTI2LS41MjI3IDIuMDAwMy0uMDE3My4xMjE4LS4wMTU4LjE1NDcgMCAuMjc0My4wMzQxLjI1NTcuMTg2OC43MjQ3LjE4NjguNzI0Ny4wMTc0LS4wNDE0LjE4ODctLjM4MzYuMzA5LS40Nzc0LjcwODktLjY5ODQgMi4xOTcxLTEuOTcyNSAzLjA0OTktMi42NjM4LjA5NTgtLjA3NzYuMTMxNS0uMTI5NS4xNTI4LS4yNzY3LjEwNTYtLjcyNTQuMTM2Mi0yLjAyNzUuMDcyNi0yLjk3NTFhMS4wMTIgMS4wMTIgMCAwIDAtLjE3MDgtLjUwMDNjLS4yMzEtLjM0MTctLjUwNzItLjY2NTEtLjkyNi0xLjA4MDVhLjQxNTIuNDE1MiAwIDAgMS0uMTE1Ny0uMjE4N2MtLjEyMjItLjY1MjQtLjM5NDktMS44NDUzLS4zOTQ5LTEuODQ1M3ptLTcuOTIwMSAxLjUwOTFhLjMzMDYuMzMwNiAwIDAgMSAuMTc5NC0uMDA2N2MuMjY3LjA2NDIuODMyMi4yMDI5IDEuMjU5NC4zMTIzLjA2LjAxNTMuMTM0Ny4wNzE0LjE2NjYuMTI0NWwuMDkzLjE1NDlhLjE4MjIuMTgyMiAwIDAgMSAuMDA1OS4xNzc0IDIxLjc5NDcgMjEuNzk0NyAwIDAgMS0uMzA1NS41NjUxbC0uMDg4Ni4xNTgzYy0uMTYzMS4yODk2LS4zMjU0LjU2OTEtLjQxNzYuNzE2MS0uMDYwNy4wOTcxLS4wOTQ1LjE0MDEtLjIwMjYuMTc4NC0uNDIwMy4xNDgtLjk0MjMuMzI0OS0xLjI1MjUuNDI1NS0uMDYzNC4wMjA1LS4wODQ5LjA1OTEtLjA3MjYuMTI5NS4wMjIyLjEyODIuMDkzOC41NjM2LjEyMTIuNjkwNi4wMTAxLjA0NjkuMDQ3Ni4wODQzLjExNzIuMDcwOS4xODM0LS4wMzQ4LjY3MTUtLjE1NDQuNjcxNS0uMTU0NHMtLjE0MzkuMTMzMi0uMjMuMjExN2EuMTQ1Ni4xNDU2IDAgMCAxLS4wNTQ1LjAzMjRjLS4xMzMuMDQ0NS0uNDU3OC4xMzU2LS41NTkuMTU3OS0uMDc5LjAxNy0uMTI5My0uMDE0MS0uMTQ5Ni0uMTAzNSAwIDAtLjEzODUtLjU5LS4xODg1LS43OTA3YTEuNTUyIDEuNTUyIDAgMCAwLS4wMjU0LS4wODcyYy0uMDM3NS0uMTE2MS0uMTI3Ni0uMzQ0NC0uMTc4NC0uNDY0YS4xMDguMTA4IDAgMCAxLS4wMDg3LS4wNDRjLjAwMTUtLjEzNjYuMDI2Ny0uNDQxNS4wMjY3LS40NDE1cy4yOTg5LjI4MDQuNDQzNS4zODE3Yy4wMzI2LjAyMy4wNTIxLjAyNzcuMDkyMS4wMTc1LjE5ODctLjA1MTEuNjU1NS0uMjAyNC45MDYyLS4yOTYyYS4zNDc1LjM0NzUgMCAwIDAgLjE0NjMtLjEwNDhjLjI1OTQtLjMxMzUuNTg0Ni0uODAxMy43NzI1LTEuMTY5MmEuMjE5NC4yMTk0IDAgMCAwIC4wMTQ2LS4xNjMxbC0uMDQwNS0uMTMzNGMtLjAxMTgtLjAzOS0uMDUzMS0uMDgzLS4wOTExLS4wOTc2YTM0LjAyNDkgMzQuMDI0OSAwIDAgMC0xLjE5OTktLjQzMjlsLjA0ODktLjAxNTV6bTguNzQxNi0zLjc5NzVhLjQwNy40MDcgMCAwIDEgLjI5OTQuMDA2OWMuNzQwOS4zMTEzIDEuOTg2NyAxLjA0MzcgMi42NzkyIDEuNTU5Ni4wNjY5LjA0OTkuMDkzNS4wODQzLjExMTEuMTY0OC4xNjI2Ljc0MDIuMjI0MyAxLjg4NDUuMTIxOSAyLjg0NzgtLjAwNzQuMDY5Mi0uMDIxMi4xMTA3LS4wNTczLjE4NDYtLjQzODguODk4MS0uOTMyNiAxLjc0MzQtMS40NTI0IDIuMzk1NC4wMDc4LS4wODA3LjA0NDYtLjQ2MTcuMDQ3MS0uNjgzNGEuMDc2NS4wNzY1IDAgMCAxIC4wMzA0LS4wNjA1IDkuMDU3NiA5LjA1NzYgMCAwIDAgLjMwNC0uMjQ2OGMuMDM2NS0uMDMxNi4wNTY4LS4wNTUzLjA3NTgtLjA4Ni4yMTE3LS4zNDI1LjU5MDMtMS4wNTk1Ljc0MjgtMS40OTA5YS43ODcuNzg3IDAgMCAwIC4wNDI5LS4zMjgxYy0uMDQ4OS0uNjAxMS0uMTQzMS0xLjQzNC0uMjgzNi0xLjk3NzZhLjMzMzcuMzMzNyAwIDAgMC0uMTcwMy0uMjE0N2MtLjEyMTItLjA2MjMtLjM1ODgtLjE3MDctLjktLjM4NzlhLjc2MzEuNzYzMSAwIDAgMS0uMjA2OC0uMTIzOGMtLjM1NDktLjI5ODUtLjkwOTctLjc0NTktMS4yNTQ5LTEuMDAzNGEuNDMwMS40MzAxIDAgMCAwLS4zNTI3LS4wNzQ5IDIxLjQ5OTMgMjEuNDk5MyAwIDAgMC0uNzUxNy4xODU2Yy0uMDYxMi4wMTY2LS4wODU0LjAxOC0uMTQ4Ni4wMTA2LS4xMDA5LS4wMTE3LS4zMDA3LS4wMjc1LS4zODItLjAzMzYuNTg3MS0uMjc2MSAxLjE1Mi0uNTE0MiAxLjUwNTctLjY0Mzd6TTguMjc0IDEyLjAwMDFjLS4xODM2LjMwMjQtLjQwMy42MjM2LS41Njg5LjgyNDNhLjE5ODguMTk4OCAwIDAgMS0uMDgzNC4wNTg4IDE0LjE0ODkgMTQuMTQ4OSAwIDAgMS0uNzA2My4yMzgybDEuMzU4Ni0xLjEyMTN6bS0yLjQyNjctLjM5N2wtLjEwODMuNzQ4NC0uMzY4NS0uNDMyOWMuMDY3MS0uMTQ1NS4yNjMzLS4yODI5LjQ3NjgtLjMxNTV6bS0uNjg2Ni0xLjY5ODZsLS4xMzMuMDgzOGMtLjAzMzMuMDIxMi0uMDQyNC4wMzA0LS4wNTYzLjA1OTVhMi42OTY4IDIuNjk2OCAwIDAgMS0uMDg1Ni4xNjE2Yy0uMDA5MS4wMTU4LS4wMzM2LjA0MDMtLjA0NjYuMDUwNGExNi42MTEyIDE2LjYxMTIgMCAwIDEtLjQ3NzMuMzUzM2MtLjAwODkuMDA2Mi0uMDIwMi4wMDM1LS4wMjc5LS4wMDQtLjAxNjUtLjAxNjYtLjA4NTktLjA5NTQtLjA5ODItLjExMzlhLjA4MjMuMDgyMyAwIDAgMS0uMDE1MS0uMDQ4OSAyLjAzMjkgMi4wMzI5IDAgMCAxIC4wMDYyLS4xMzM3Yy4wMDM5LS4wNTA5LjAxODUtLjA3NTEuMDgwNS0uMTM5NC4wNjkzLS4wNzE5LjE0NDktLjE0NzUuMjI0My0uMjI1MS4xOTQ3LS4xNjQxLjY4NjMtLjU2MzMgMS41NjQyLTEuMTkwNGEuMTkyNy4xOTI3IDAgMCAwIC4wNDM3LS4wNDIzYy4wOTIxLS4xMjQ0LjM1NC0uNDY0NC40MTg2LS41NDUyYS4xOTI4LjE5MjggMCAwIDEgLjAzMDgtLjAzMTEgMi40ODQ5IDIuNDg0OSAwIDAgMSAuMjU5NS0uMTgzM2MuMjQ0NS0uMTU0Mi43MTgxLS40MzU0Ljk4MzQtLjU4OThsLS4xMDA3LjEyNGMtLjAwNTYuMDA1NS0uMDExMS4wMTA2LS4wMTY3LjAxNjNhNDIuMjg3NSA0Mi4yODc1IDAgMCAwLS41NjI1LjQzMTRjLS4wMjg2LjAyMjctLjA0LjA0MjUtLjA0NjYuMDc4My0uMDIyNy4xMjY2LS4wNjA1LjM2Ny0uMDcxNi41MDAxLS4wMDMyLjAzOS0uMDIuMDU4My0uMDU5Ny4wNzQ0LS4xNzMuMDcwNC0uMzc4MS4xNDQ1LS41NDM5LjIxMS0uMDM1Ni4wMTQxLS4wNDU0LjAxOTUtLjA2NjQuMDM1Ni0uMDE2Ni4wMTI4LS4yMzY5LjIwOTgtLjIzNjkuMjA5OHMuNDc5LS4xMTgxLjY1NDctLjE1NzljLjA0Mi0uMDA5NC4wNi0uMDA2OS4wOTg3LjAxMTQuMDM2My4wMTY4LjA5NjcuMDQwOC4xMjg2LjA1MjQuMDQ4OS4wMTguMDc0OC4wMTcyLjEyODguMDA1NC4xOTc5LS4wNDQyLjUzMDgtLjEyMzMuNzA4LS4xNjk1LjA5MjEtLjAyNC4xNDI0LS4wNDg5LjIyMDQtLjEwMzUuMDg0OS0uMDU5MS4yOTk5LS4yMjA1LjI5OTktLjIyMDVzLS4wMDQuMDI4NS0uMDA2OS4wNDQzYS4wNTkxLjA1OTEgMCAwIDEtLjAxNjEuMDMxOCAzLjk4NiAzLjk4NiAwIDAgMS0uMTU4MS4xNzc3Yy0uMDg3MS4wOTAyLS4xMzkyLjEyMjMtLjI0ODUuMTY4LS41MDM1LjIxLTEuMzYzOC41MzYyLTIuMDA5MS43NTk4LS4wNDIzLjAxNDgtLjA2MDYuMDI2OS0uMDkxOS4wNTktLjAzNDEuMDM0Ni0uMDc5NS4wODUtLjA3OTUuMDg1cy41MjYyLjAzODMuNjg2OC4wNTY4Yy4wNTIxLjAwNTkuMDg5My4wMjMuMTI5MS4wNTczLjEzMi4xMTM3LjU2OTEuNTY0MS42OTk5LjcyMDUgMCAwLTEuMjQyNi4yMDY4LTEuODE4NC4zNDk5LS4wNzExLjAxNzUtLjEwNjYuMDYyOC0uMTIyNy4xMTk4LS4wNDc2LjE2NzUtLjE1OTkuNzA2Mi0uMTU5OS43MDYycy0uMDQtLjAxMjgtLjA5NTgtLjA0NWMtLjAzODMtLjAyMi0uMDU3Ny0uMDQwMy0uMDk5Ny0uMDg0Ny0uMTM2Mi0uMTQ0LS4zNjAxLS40MTk4LS40Njc3LS41Nzk2LS4wMzE2LS4wNDcyLS4wNDQ5LS4xMDcyLS4wMDU0LS4xNTU0LjExNjctLjE0MzguMzUxMi0uNDA2Mi40ODA1LS41NDExLjAxMzgtLjAxNDYuMDMxMy0uMDQuMDQ5OS0uMDc2Ni4wNDk4LS4xMDMyLjEwMzgtLjMxNzUuMTI4Mi0uNDEzOXptOC4wMjE3LTIuODE2NmEuMTgwNS4xODA1IDAgMCAxIC4xMDgzLjAxNDhsLjI1NjQuMTIyOGEuMDkzNS4wOTM1IDAgMCAxIC4wNTAzLjA2MjhjLjAzNDguMTQ2OC4wNzc1LjM0MTIuMTA2MS41MDY1YS4yOTkzLjI5OTMgMCAwIDEtLjAzNi4xOTk0Yy0uMTA2MS4xODQ2LS4zMjQuNTE2Ni0uNDQ2LjY5NS0uMDI3MS4wNC0uMDMwNC4wODg1LS4wMjIuMTM2MS4wNTUzLjMwNTkuMjg1OCAxLjM3NC4yODU4IDEuMzc0bC0uMTQ1MS0uMTMyMmEuMjEwMi4yMTAyIDAgMCAxLS4wNjAyLS4wOTE3Yy0uMTAzMi0uMzAyMi0uMjk2Mi0uOTMzNS0uMzg1LTEuMjQwNmEuMTU4OC4xNTg4IDAgMCAxIC4wMjk5LS4xNDVjLjE1MTMtLjE4MzguMzcxNy0uNDc3OC41MDA1LS42NjQxLjAzNi0uMDUyNC4wNDc5LS4xMTAyLjAyNjctLjE1MzRhNC42MTQyIDQuNjE0MiAwIDAgMC0uMTI3My0uMjM2OS4xMDU4LjEwNTggMCAwIDAtLjA1OTctLjA0ODlsLS4xNzQtLjA1NThhLjE0NTIuMTQ1MiAwIDAgMC0uMDkzLjAwMTdjLS4zNzkxLjEzNzYtLjg4ODkuMzM2LTEuMjAwOS40NjU1LS4wNDU3LjAxOS0uMDY0NC4wMjA1LS4xMTk3LjAxMjEtLjA5MDMtLjAxMzMtLjM1MzQtLjA2MDUtLjQ4MjUtLjA4NDdhLjAzNDQuMDM0NCAwIDAgMS0uMDIzLS4wNTExbC4xNTMtLjI2NTRhLjE0NzQuMTQ3NCAwIDAgMSAuMDk1NS0uMDcwNGMuNDkyMi0uMTEyMyAxLjE0My0uMjQxMyAxLjc2MTktLjM1MDV6TTcuNzM2OSA4LjMwNjVhLjA1NDQuMDU0NCAwIDAgMSAuMDU0OC4wMzI2Yy4wMzA5LjA3Mi4wMjI1LjE1MjMtLjAwNzQuMjIwOS0uMDExNi4wMjgtLjA0NzQuMDU1MS0uMDc2Ny4wNjE2bC0uMjQ1Ni4wNTQ2YS4wMjI3LjAyMjcgMCAwIDEtLjAyNzQtLjAyMzdsLjAyMy0uMjg4NmEuMDQuMDQgMCAwIDEgLjAzNjUtLjAzNjZsLjI0MjgtLjAyMDh6bTIuNzk0MS0xLjg1NDNhLjAzNjYuMDM2NiAwIDAgMSAuMDMyMS4wNTQ5bC0uNTk4NyAxLjAzMmEuMjY0My4yNjQzIDAgMCAxLS4xNTUyLjEyNmwtMS4xMjI3LjM1MTZhMS42NTAzIDEuNjUwMyAwIDAgMS0uMzc2MS4wNzEyYy0uMjQ5LjAxODgtLjk4ODYuMDQyLS45ODg2LjA0MmwuMDE2Mi0uMDM1MWEuMDc0MS4wNzQxIDAgMCAxIC4wMzgtLjAzNjhsLjM1LS4xNDg3YS4xNjkuMTY5IDAgMCAwIC4wNjY2LS4wNTAybC41NDA1LS42NjYxYy4wMjg5LS4wMzU2LjA2NjYtLjA2OTcuMTA2OS0uMDkwOS4zNTctLjE4ODEuOTkyLS40NzA1IDEuNDM2OC0uNjE5MmEuNTA4NS41MDg1IDAgMCAxIC4xNDI2LS4wMjM1bC41MTE2LS4wMDcyem0tLjYwMDItMS4xOTg0YzEuMjM4OS0uMTA5IDIuOTE1My0uMTM4NiA0LjUxNjgtLjAxNzNhLjgzNy44MzcgMCAwIDEgLjI2MzguMDY0Yy41MjQ3LjIyMDkgMS40NTU2LjcwNDIgMi40OTA2IDEuMjk2OWEuNzc2NC43NzY0IDAgMCAxIC4xMjgxLjA5MTdjLjI3NDIuMjQxOS45Njg5Ljk1MzUuOTY4OS45NTM1bC0uMjE2Ny0uMDQzYS4yMjgyLjIyODIgMCAwIDEtLjA4NDQtLjAzNTFjLS40MzgzLS4yOTQ4LTEuMDc4Mi0uNjc4NS0xLjYxNDUtLjk0OWEuNTkxNS41OTE1IDAgMCAwLS4yMDM0LS4wNTk4IDE0LjY4OTUgMTQuNjg5NSAwIDAgMC0uODQ0My0uMDYxOGMtLjExMzgtLjAwNDctLjE5MTMtLjAyMzctLjMwMjYtLjA4MDMtLjIxMjctLjEwOC0uNzI4LS4zNDItLjk4NDctLjQ0LS4xMDk4LS4wNDItLjE2NTgtLjA1MTktLjI3MzQtLjA1MDItLjQ0MS4wMDY0LTEuNDQ1Ny4wMzg1LTEuOTU4OC4wNzA0YS4yNDQ1LjI0NDUgMCAwIDEtLjA1MjEtLjAwMjVsLS4yNDQ1LS4wMzgzYy42OTM1LS4xMTk2IDIuNDA3Ny0uMjcyNSAzLjExNzItLjMwOThsLS4yODg3LS4wOTY2YS41OTYuNTk2IDAgMCAwLS4xNzI4LS4wMjk5Yy0uOTY5OC0uMDIxOC0yLjMwMzYtLjAxNzgtMy40MzIxLjA2N2EuNjA5OC42MDk4IDAgMCAwLS4yMDIxLjA1MDRjLS4zMjI4LjE0MTktMS4xMS41NjkyLTEuODk5NCAxLjAwODEtLjI1NDYuMTQxNi0uNTI5LjI5NTItLjc3MzEuNDMyNiAwIDAgLjA5ODUtLjEyNjguMTE3NS0uMTUxNS4wMTY4LS4wMjE1LjAyMTktLjAyNTUuMDQ0Ny0uMDQwMy4xMDE4LS4wNjg0LjQxMDktLjI2NzguNTM0My0uMzU4NS4yMzc3LS4xNzk0LjYxMjgtLjQ5NTYuODM2NC0uNjkxNmEuNjY3Ny42Njc3IDAgMCAwIC4xMjg4LS4xNTI5Yy4wNzIzLS4xMTcxLjE1MTMtLjI0NDEuMTk5OS0uMzE0NS4wNDE0LS4wNjExLjExMjMtLjEwMzguMjAwNi0uMTExN3pNNC42NTUgMi40MDRjLjMwNi0uMDMxNi40NzcuMDg3NS40NzcuMzk3NXYuMTcxNWMwIC4zMTcyLS4xNzEuNDQ1NS0uNDc3LjQ3NzRhNzEuMjU1MiA3MS4yNTUyIDAgMCAwLTEuMjY5LjE0NHYuNDY4N2MtLjA4ODYuMDEwOS0uMTc3NC4wMjE4LS4yNjYuMDMzMVYyLjU4MTRhNzAuNjYyNSA3MC42NjI1IDAgMCAxIDEuNTM1LS4xNzc0em0xNC4yMDMyLS4wNDkxYTcxLjI0NSA3MS4yNDUgMCAwIDEgMi4wMjIuMjI2M3YuMjQ0NGE2OC43NjY2IDY4Ljc2NjYgMCAwIDAtLjg3NDEtLjEwNXYxLjI3MDdhOTQuMDM4MyA5NC4wMzgzIDAgMCAwLS4yNjYzLS4wMjk5VjIuNjkwNmE2OC4zMzIyIDY4LjMzMjIgMCAwIDAtLjg4MTUtLjA5MTR2LS4yNDQzek03LjY0OTQgMi4xNTU4di4yNDQxYTcxLjg1MjcgNzEuODUyNyAwIDAgMC0xLjY2NDEuMTIyM3YuMzczMWE2OC41NzI1IDY4LjU3MjUgMCAwIDEgMS40OC0uMTEwN3YuMjQ0NGE3MC41NDA5IDcwLjU0MDkgMCAwIDAtMS40OC4xMTA0di40MDk0YTY5LjcwMDIgNjkuNzAwMiAwIDAgMSAxLjY2NDEtLjEyMjN2LjI0NDFhNzAuOTM3NyA3MC45Mzc3IDAgMCAwLTEuOTI0NS4xNDV2LTEuNTE1YTcwLjUzNDYgNzAuNTM0NiAwIDAgMSAxLjkyNDUtLjE0NDh6bTguNjMyNi40MTQ5YzAtLjMzOTcuMTY4My0uNDA5Ny41NDc2LS4zODQuMzMzMi4wMjMuNjY1OC4wNDc5Ljk5ODguMDc1Ni4zMjk1LjAyNzIuNTQ2OS4xMTk4LjU0NjkuNDY2NXYuNjc2NWMwIC4zNDAyLS4xODc4LjQwMTUtLjU0NjkuMzcxOWE3Mi41NTI1IDcyLjU1MjUgMCAwIDAtLjk5ODgtLjA3NTRjLS4zNjI4LS4wMjQ1LS41NDc2LS4wOTQ2LS41NDc2LS40NTQ2di0uNjc2NXptLTIuNTgxMi0uNTI4NGMuNjQyNi4wMTUzIDEuMjg1LjAzOTUgMS45Mjc0LjA3MjZ2LjI0NDFhNzAuNzM2NiA3MC43MzY2IDAgMCAwLTEuNjY2Ni0uMDY1N3YuMzcyOGMuNDk0My4wMTM5Ljk4ODQuMDMyNyAxLjQ4MjMuMDU2N3YuMjQ0NGE3MC40NDA3IDcwLjQ0MDcgMCAwIDAtMS40ODIyLS4wNTY2di40MDkyYTY5LjE1NjQgNjkuMTU2NCAwIDAgMSAxLjY2NjYuMDY2di4yNDQxYTcxLjI5IDcxLjI5IDAgMCAwLTEuOTI3NC0uMDcyNnYtMS41MTV6bS0zLjM0NC0uMDAxM3YxLjA5NThjMCAuMzQ2Ny0uMTgxOS40MjI4LS41NDg0LjQzNDFhNjguMDI4OSA2OC4wMjg5IDAgMCAwLS45NTczLjAzNjFjLS4zNDAxLjAxNTMtLjU0NzktLjA0OTQtLjU0NzktLjM5MjZWMi4xMTg2bC4yNjA2LS4wMTMzdjEuMTQyYzAgLjA2OTQuMDU5NS4xMjYuMTM4NS4xMjIzYTcwLjExOTUgNzAuMTE5NSAwIDAgMSAxLjI1NDctLjA0NzVjLjA3OTUtLjAwMjIuMTMyMy0uMDYzLjEzMjMtLjEzMjR2LTEuMTQyYy4wODktLjAwMjUuMTc4MS0uMDA0Ny4yNjc1LS4wMDY3em02LjMyNDUuMzgwMmMtLjA3OTItLjAwNTQtLjEzODcuMDUwMi0uMTM4Ny4xMjk1di43NDkxYzAgLjA2OTQuMDU5NS4xNDIzLjEzODcuMTQ3OC40MzIxLjAyODcuODYzOC4wNjEzIDEuMjk1NC4wOTc4LjA2OTEuMDA1OS4xMzgyLS4wNTc2LjEzODItLjEyNjh2LS43NDkzYzAtLjA3OTEtLjA2OTEtLjE0NDUtLjEzODItLjE1MDVhNzAuMTg2NCA3MC4xODY0IDAgMCAwLTEuMjk1NC0uMDk3NnptLTUuMTcyMS0uMzk3NmMuNDc5LS4wMDM1Ljk1OC0uMDAxNyAxLjQzNjguMDA0N3YuMjQ0MWE3Mi4xNDczIDcyLjE0NzMgMCAwIDAtMS41MzYtLjAwNGMtLjA2OTMuMDAwNy0uMTM4Ny4wNjA4LS4xMzg3LjEzMDJ2Ljc1OWMwIC4wNjk0LjA2OTMuMTM4MS4xMzg3LjEzNzQuNDU5My0uMDA0LjkxODMtLjAwMzIgMS4zNzc2LjAwMnYtLjQwOTRhNjYuNTkyIDY2LjU5MiAwIDAgMC0uNzk5NC0uMDA0MnYtLjI0NDNjLjM1MzQgMCAuNzA2OC4wMDI3IDEuMDYwMi4wMDc5di44OTc2YTcxLjEyMjggNzEuMTIyOCAwIDAgMC0xLjQ4OTYtLjAwNjRjLS4zNjM1LjAwMjUtLjU0ODQtLjA2MDMtLjU0ODQtLjQxMzZ2LS42NjAyYzAtLjMyOTkuMTY1MS0uNDM4My40OTg4LS40NDA4em0tNi43NTQ2LjYxNjJsLS4wMjA2LjAwMDRhNzAuMjI4OSA3MC4yMjg5IDAgMCAwLTEuMzQ4LjE1MjJWMy4zNWE3MS4wMzQ0IDcxLjAzNDQgMCAwIDEgMS4zNDgtLjE1MmMuMDY4OS0uMDA3NC4xMzgtLjA3MDQuMTM4LS4xMzY0di0uMzA2OGMwLS4wNjk0LS4wNjkxLS4xMjE4LS4xMzgtLjExNDZsLjAyMDYtLjAwMDR6Ii8+PC9zdmc+" alt="Peugeot" title="Peugeot" height="26">
   </div></div>
   <div class="kpis" id="kpis"></div>
+  <div id="aprobStrip"></div>
   <div id="fichaStrip"></div>
 
   <div class="toolbar">
@@ -487,6 +492,11 @@
         </div>
       </fieldset>
       <fieldset>
+        <legend>Zonas por vendedor (códigos postales)</legend>
+        <div id="cfgZonas"></div>
+        <p class="hint">Reglas separadas por comas: CP exactos (36201) o prefijos con asterisco (36*). Si un vendedor da de alta un CP fuera de su zona, la ficha queda pendiente de aprobación del superior.</p>
+      </fieldset>
+      <fieldset>
         <legend>Usuarios</legend>
         <p class="hint">La gestión real de usuarios (alta/baja y contraseñas cifradas) forma parte de la versión con servidor. En esta demo los usuarios son fijos: <b>admin</b>, <b>jefe</b> y <b>vendedor</b>.</p>
       </fieldset>
@@ -495,6 +505,18 @@
       <span class="spacer"></span>
       <button class="btn-ghost" onclick="closeConfig()">Cancelar</button>
       <button class="btn-primary" onclick="saveConfig()">Guardar configuración</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL APROBACIONES (Jefe/Admin) -->
+<div class="overlay" id="aprobOverlay">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-head"><h2>🔐 Aprobaciones pendientes — altas fuera de zona</h2><button class="x" onclick="closeAprob()" title="Cerrar">×</button></div>
+    <div class="modal-body"><div id="aprobList"></div></div>
+    <div class="modal-foot">
+      <span class="spacer"></span>
+      <button class="btn-ghost" onclick="closeAprob()">Cerrar</button>
     </div>
   </div>
 </div>
@@ -517,7 +539,8 @@ const COMERCIALES=[
   {user:'luis',     nombre:'Luis Vega'}
 ];
 /* Parámetros configurables por el Administrador */
-const CFG_DEF={cadenciaA:90, cadenciaB:360, umbralA:50, umbralB:2};
+const CFG_DEF={cadenciaA:90, cadenciaB:360, umbralA:50, umbralB:2,
+  zonas:{ vendedor:['36*','32005'], ana:['36002','369*','360*'], luis:['36400','32*'] }};
 let CFG=loadCfg();
 function loadCfg(){ try{ return Object.assign({}, CFG_DEF, JSON.parse(localStorage.getItem(CFG_STORE))||{}); }catch(e){ return {...CFG_DEF}; } }
 function saveCfg(){ localStorage.setItem(CFG_STORE, JSON.stringify(CFG)); }
@@ -600,6 +623,19 @@ const SEED=[
       {ts:'2026-05-12T10:30:00', fase:'fidelizacion', autor:'Luis Vega (luis)', texto:'Visita de fidelización anual. Satisfacción alta. Preparar propuesta de ampliación.'}
     ],
     etapa:'fidelizacion', ultimaVisita:'2026-05-12', vendedor:'luis'
+  },
+  {
+    id:'demo-g', empresa:'Servicios Coruña Norte, S.L.', cif:'B15009988', contacto:'Iria Ferro', telefono:'981 10 20 30',
+    email:'', poblacion:'A Coruña', cp:'15001', nuevo:'si',
+    turismos:3, combTur:'Gasolina', furgonetas:2, tamFur:'Tipo 1A', combFur:'Gasolina',
+    udsCambiar:1, udsAmpliar:0, marcas:'Citroën',
+    comentarios:'Alta FUERA de la zona de Ana → pendiente de aprobación del superior.',
+    historial:[
+      {ts:'2026-08-28T09:30:00', fase:'prospeccion', autor:'Ana Souto (ana)', texto:'Puerta fría en A Coruña (fuera de zona).'},
+      {ts:'2026-08-28T09:31:00', fase:'prospeccion', autor:'Ana Souto (ana)', texto:'⚠ Alta fuera de zona (CP 15001): pendiente de aprobación del superior.'}
+    ],
+    etapa:'prospeccion', ultimaVisita:'2026-08-28', vendedor:'ana',
+    zonaAprob:{estado:'pendiente', motivo:'CP 15001 fuera de la zona asignada', solicitadoPor:'Ana Souto (ana)', solicitadoTs:'2026-08-28T09:31:00'}
   }
 ];
 
@@ -652,6 +688,15 @@ function fichaFaltantes(c){
 function requiereFicha(etapa){ return normEtapa(etapa)!=='prospeccion'; }
 function incumple(c){ return requiereFicha(c.etapa) && fichaFaltantes(c).length>0; }
 
+/* ---- Zonas por código postal y aprobaciones ---- */
+function cpEnZona(cp, reglas){
+  if(!reglas || !reglas.length) return true;   // sin zona definida = no restringe
+  cp=(cp||'').trim(); if(!cp) return true;
+  return reglas.some(r=>{ r=(r||'').trim(); if(!r) return false; return r.endsWith('*') ? cp.startsWith(r.slice(0,-1)) : cp===r; });
+}
+function reglasDe(vend){ return (CFG.zonas && CFG.zonas[vend]) || []; }
+function pendientesAprob(){ return data.filter(c=>c.zonaAprob && c.zonaAprob.estado==='pendiente'); }
+
 /* ---- Fechas ---- */
 function addDays(iso,d){ const dt=new Date(iso+'T00:00:00'); dt.setDate(dt.getDate()+d); return dt; }
 function fmt(dt){ if(!dt) return ''; const d=(dt instanceof Date)?dt:new Date(dt+'T00:00:00'); return d.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}); }
@@ -699,7 +744,7 @@ function render(){
     }
     const tr=document.createElement('tr');
     tr.innerHTML=`
-      <td class="empresa-cell" onclick="openModal('${c.id}')">${esc(c.empresa)||'(sin nombre)'}${c.nuevo==='si'?' <span class="muted">· nuevo</span>':''}${incumple(c)?` <span class="warn-icon" title="Ficha incompleta para la fase «${etapaShort(c.etapa)}»">⚠</span>`:''}</td>
+      <td class="empresa-cell" onclick="openModal('${c.id}')">${esc(c.empresa)||'(sin nombre)'}${c.nuevo==='si'?' <span class="muted">· nuevo</span>':''}${incumple(c)?` <span class="warn-icon" title="Ficha incompleta para la fase «${etapaShort(c.etapa)}»">⚠</span>`:''}${c.zonaAprob&&c.zonaAprob.estado==='pendiente'?` <span class="warn-icon" title="Alta fuera de zona · pendiente de aprobación">🔐</span>`:''}</td>
       <td class="hide-sm">${esc(c.poblacion)||'<span class="muted">—</span>'}</td>
       <td><span class="badge tipo-${c.tipo}">${c.tipo}</span></td>
       <td class="num">${c.parque}</td>
@@ -719,6 +764,17 @@ function render(){
     fs.innerHTML=`<b>⚠ ${alerta.length} empresa(s) en Oferta o posterior con la ficha incompleta:</b> `+
       alerta.map(c=>`<span class="item" onclick="openModal('${c.id}')">${esc(c.empresa)}</span>`).join('');
   } else { fs.className=''; fs.innerHTML=''; }
+
+  // Bloque 2: pendientes de aprobación (fuera de zona)
+  const pend = canSeeAll() ? pendientesAprob() : visibleData().filter(c=>c.zonaAprob && c.zonaAprob.estado==='pendiente');
+  const as=document.getElementById('aprobStrip');
+  if(pend.length){
+    as.className='venc-strip';
+    as.innerHTML = canSeeAll()
+      ? `<b>🔐 ${pend.length} alta(s) fuera de zona pendiente(s) de aprobación:</b> `+pend.map(c=>`<span class="item" onclick="openAprob()">${esc(c.empresa)}</span>`).join('')
+      : `<b>🔐 ${pend.length} de tus altas está(n) pendiente(s)</b> de aprobación del superior (fuera de zona).`;
+  } else { as.className=''; as.innerHTML=''; }
+  const ac=document.getElementById('aprobCount'); if(ac){ const np=canSeeAll()?pendientesAprob().length:0; ac.textContent=np?`(${np})`:''; }
 
   renderKpis();
   if(viewMode==='cal') renderCalendar();
@@ -949,6 +1005,25 @@ function saveClient(){
     etapa:g('etapa'), ultimaVisita:g('ultimaVisita'),
     vendedor: (session && session.role==='vendedor') ? session.user : (document.getElementById('comercial').value||'')
   };
+  // ---- Bloque 2: control de zona y aprobación del superior ----
+  const prevCli = id ? data.find(x=>x.id===id) : null;
+  obj.zonaAprob = prevCli ? prevCli.zonaAprob : undefined;
+  const enZona = !obj.cp || cpEnZona(obj.cp, reglasDe(obj.vendedor));
+  if(session && session.role==='vendedor'){
+    const est = obj.zonaAprob && obj.zonaAprob.estado;
+    if(!enZona && est!=='aceptada' && est!=='pendiente'){
+      obj.zonaAprob={estado:'pendiente', motivo:'CP '+obj.cp+' fuera de la zona asignada', solicitadoPor:session.nombre+' ('+session.user+')', solicitadoTs:new Date().toISOString()};
+      obj.historial=obj.historial.concat([{ts:new Date().toISOString(), fase:'prospeccion', autor:session.nombre+' ('+session.user+')', texto:'⚠ Alta fuera de zona (CP '+obj.cp+'): pendiente de aprobación del superior.'}]);
+    } else if(enZona && est==='pendiente'){
+      obj.zonaAprob=undefined; // el CP se ha corregido a la zona
+    }
+  }
+  if(obj.zonaAprob && obj.zonaAprob.estado==='pendiente' && requiereFicha(obj.etapa)){
+    obj.etapa='prospeccion';
+    alert('El CP '+obj.cp+' está FUERA de zona. La ficha queda PENDIENTE DE APROBACIÓN del superior y permanece en «Prospección» hasta que se apruebe. Puedes seguir añadiendo anotaciones.');
+  } else if(obj.zonaAprob && obj.zonaAprob.estado==='pendiente' && !(prevCli && prevCli.zonaAprob && prevCli.zonaAprob.estado==='pendiente')){
+    alert('El CP '+obj.cp+' está FUERA de tu zona asignada. La ficha se guarda como PENDIENTE DE APROBACIÓN del superior. Puedes seguir añadiendo anotaciones mientras tanto.');
+  }
   if(requiereFicha(obj.etapa)){
     const falta=fichaFaltantes(obj);
     if(falta.length){
@@ -1032,6 +1107,7 @@ function applySession(){
     document.getElementById('uRole').textContent=roleName(session.role);
     document.getElementById('cfgBtn').style.display=(session.role==='admin')?'inline-block':'none';
     document.getElementById('vDash').style.display=canSeeAll()?'inline-block':'none';
+    document.getElementById('aprobBtn').style.display=canSeeAll()?'inline-block':'none';
     fillComerciales();
     setView('lista');
   } else {
@@ -1048,7 +1124,15 @@ function openConfig(){
   document.getElementById('cfgUmbralB').value=CFG.umbralB;
   document.getElementById('cfgCadA').value=CFG.cadenciaA;
   document.getElementById('cfgCadB').value=CFG.cadenciaB;
+  fillCfgZonas();
   document.getElementById('cfgOverlay').classList.add('open');
+}
+function fillCfgZonas(){
+  const box=document.getElementById('cfgZonas');
+  box.innerHTML=COMERCIALES.map(c=>{
+    const val=((CFG.zonas&&CFG.zonas[c.user])||[]).join(', ');
+    return `<div class="field full"><label>${esc(c.nombre)} (${c.user})</label><input id="cfgZona_${c.user}" value="${esc(val)}" placeholder="Ej. 36*, 36201, 32005"></div>`;
+  }).join('');
 }
 function closeConfig(){ document.getElementById('cfgOverlay').classList.remove('open'); }
 function saveConfig(){
@@ -1056,12 +1140,47 @@ function saveConfig(){
   const uA=gv('cfgUmbralA'), uB=gv('cfgUmbralB');
   if(uB>uA){ alert('El parque mínimo de B no puede ser mayor que el umbral de A.'); return; }
   CFG.umbralA=uA; CFG.umbralB=uB; CFG.cadenciaA=gv('cfgCadA'); CFG.cadenciaB=gv('cfgCadB');
+  CFG.zonas=CFG.zonas||{};
+  COMERCIALES.forEach(c=>{ const el=document.getElementById('cfgZona_'+c.user); if(el){ CFG.zonas[c.user]=el.value.split(/[\s,;]+/).map(s=>s.trim()).filter(Boolean); } });
   saveCfg(); closeConfig(); render();
+}
+/* ---- Bandeja de aprobaciones (Jefe/Admin) ---- */
+function openAprob(){
+  if(!canSeeAll()) return;
+  const list=document.getElementById('aprobList');
+  const pend=pendientesAprob();
+  if(!pend.length){ list.innerHTML='<p class="hint">No hay altas pendientes de aprobación.</p>'; }
+  else {
+    list.innerHTML=pend.map(c=>{
+      const nom=(COMERCIALES.find(x=>x.user===c.vendedor)||{}).nombre||c.vendedor||'—';
+      return `<div class="aprob-item">
+        <div class="aprob-info"><b>${esc(c.empresa)}</b> <span class="muted">· CP ${esc(c.cp||'')} · ${esc(c.poblacion||'')}</span>
+          <div class="hint">${esc(c.zonaAprob.motivo||'')} · Solicitado por ${esc(c.zonaAprob.solicitadoPor||'')} el ${fmtDT(c.zonaAprob.solicitadoTs)} · Comercial: ${esc(nom)}</div></div>
+        <div class="aprob-actions">
+          <button class="btn-ghost btn-sm" onclick="closeAprob();openModal('${c.id}')">Ver ficha</button>
+          <button class="btn-primary btn-sm" onclick="aprobResolver('${c.id}','aceptada')">Aceptar</button>
+          <button class="btn-danger btn-sm" onclick="aprobResolver('${c.id}','rechazada')">Rechazar</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('aprobOverlay').classList.add('open');
+}
+function closeAprob(){ document.getElementById('aprobOverlay').classList.remove('open'); }
+function aprobResolver(id, estado){
+  if(!canSeeAll()) return;
+  const c=data.find(x=>x.id===id); if(!c||!c.zonaAprob) return;
+  c.zonaAprob.estado=estado;
+  c.zonaAprob.resueltoPor=session.nombre+' ('+session.user+')';
+  c.zonaAprob.resueltoTs=new Date().toISOString();
+  c.historial=(c.historial||[]).concat([{ts:new Date().toISOString(), fase:normEtapa(c.etapa), autor:session.nombre+' ('+session.user+')', texto:'Aprobación de alta fuera de zona: '+(estado==='aceptada'?'ACEPTADA':'RECHAZADA')+'.'}]);
+  save(); openAprob(); render();
 }
 
 document.getElementById('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeModal(); });
 document.getElementById('cfgOverlay').addEventListener('click',e=>{ if(e.target.id==='cfgOverlay') closeConfig(); });
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeModal(); closeConfig(); } });
+document.getElementById('aprobOverlay').addEventListener('click',e=>{ if(e.target.id==='aprobOverlay') closeAprob(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeModal(); closeConfig(); closeAprob(); } });
 
 try{ session=JSON.parse(sessionStorage.getItem(SESS))||null; }catch(e){ session=null; }
 applySession();
