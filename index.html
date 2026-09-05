@@ -200,6 +200,26 @@
   .minibar span{position:absolute; right:7px; top:0; line-height:20px; font-size:12px; font-weight:700; color:var(--gris)}
   .tablewrap{overflow-x:auto}
 
+  /* Fase Visita + histórico del funnel */
+  .etapa-visita{color:#2f5c99; border-color:var(--azul-claro); background:#eef4fb}
+  .funnel-steps{display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:14px}
+  .fstep{display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:#9aa2a9; padding:4px 9px; border:1px solid var(--linea); border-radius:20px}
+  .fstep .fnum{display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:var(--gris-claro); color:#fff; font-size:11px}
+  .fstep.done{color:var(--gris); border-color:var(--azul-claro)}
+  .fstep.done .fnum{background:var(--azul-claro)}
+  .fstep.cur{color:#fff; background:var(--azul); border-color:var(--azul)}
+  .fstep.cur .fnum{background:#fff; color:var(--azul)}
+  .fsep{color:var(--gris-claro); font-weight:700}
+  .hist-add{background:#f7f9fb; border:1px solid var(--linea); border-radius:8px; padding:12px 14px; margin-bottom:12px}
+  .hist-add .hint{display:block; margin-top:6px}
+  .hist-list{display:flex; flex-direction:column; gap:8px}
+  .hist-item{border:1px solid var(--linea); border-left:3px solid var(--azul-claro); border-radius:6px; padding:8px 12px; background:#fff}
+  .hist-meta{font-size:12px; color:var(--gris); margin-bottom:4px; display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+  .hist-when{font-variant-numeric:tabular-nums}
+  .hist-who{font-weight:600}
+  .hist-text{font-size:13px; color:#333; white-space:normal}
+  .hist-empty{color:#9aa2a9; font-style:italic; font-size:13px; padding:8px 0}
+
   @media(max-width:980px){ .funnel{grid-template-columns:repeat(2,1fr)} }
   @media(max-width:720px){ .funnel{grid-template-columns:1fr} th.hide-sm,td.hide-sm{display:none} .cal-cell{min-height:72px} }
 </style>
@@ -267,6 +287,7 @@
     <select id="fEtapa" onchange="render()">
       <option value="">Todas las etapas</option>
       <option value="prospeccion">Prospección</option>
+      <option value="visita">Visita</option>
       <option value="oferta">Oferta</option>
       <option value="pedido">Pedido</option>
       <option value="fidelizacion">Fidelización</option>
@@ -346,10 +367,12 @@
         <legend>Datos del cliente</legend>
         <div class="grid">
           <div class="field full"><label>Empresa *</label><input id="empresa" placeholder="Razón social / nombre comercial"></div>
+          <div class="field"><label>CIF</label><input id="cif" placeholder="Ej. B36123456"></div>
           <div class="field"><label>Persona de contacto</label><input id="contacto"></div>
           <div class="field"><label>Teléfono</label><input id="telefono"></div>
           <div class="field"><label>Email</label><input id="email"></div>
           <div class="field"><label>Población</label><input id="poblacion"></div>
+          <div class="field"><label>Código postal</label><input id="cp" placeholder="36201"></div>
           <div class="field"><label>¿Cliente nuevo?</label>
             <select id="nuevo"><option value="no">No — ya es cliente</option><option value="si">Sí — cliente nuevo</option></select>
           </div>
@@ -360,7 +383,7 @@
       </fieldset>
 
       <fieldset>
-        <legend>1 · Prospección — Datos de flota (parque)</legend>
+        <legend>Ficha de flota (parque) — se cubre en la fase Visita</legend>
         <div class="grid">
           <div class="field"><label>Nº de turismos</label><input type="number" min="0" id="turismos" value="0" oninput="calcTipo()"></div>
           <div class="field"><label>Combustión turismos</label>
@@ -391,21 +414,34 @@
       </fieldset>
 
       <fieldset>
-        <legend>Funnel de gestión — resultado de la visita en cada fase</legend>
-        <div class="funnel">
-          <div class="stage s1"><h3>1 · Prospección (Nuevo Cliente)</h3><textarea id="funProspeccion" placeholder="Resultado de la visita de prospección…"></textarea></div>
-          <div class="stage s2"><h3>2 · Oferta</h3><textarea id="funOferta" placeholder="Resultado de la visita / oferta presentada…"></textarea></div>
-          <div class="stage s3"><h3>3 · Pedido</h3><textarea id="funPedido" placeholder="Resultado / detalle del pedido…"></textarea></div>
-          <div class="stage s4"><h3>4 · Visita de Fidelización</h3><textarea id="funFidelizacion" placeholder="Resultado de la visita de fidelización…"></textarea></div>
+        <legend>Histórico del funnel — acciones registradas (inmutable)</legend>
+        <div id="funnelSteps" class="funnel-steps"></div>
+        <div class="hist-add">
+          <div class="grid">
+            <div class="field"><label>Fase de la acción</label>
+              <select id="histFase">
+                <option value="prospeccion">Prospección</option>
+                <option value="visita">Visita</option>
+                <option value="oferta">Oferta</option>
+                <option value="pedido">Pedido</option>
+                <option value="fidelizacion">Visita de Fidelización</option>
+              </select>
+            </div>
+            <div class="field full"><label>Anotación / resultado de la acción</label><textarea id="histTexto" placeholder="Describe la acción o el resultado de la visita…"></textarea></div>
+          </div>
+          <button class="btn-ghost" type="button" onclick="addHistEntry()">➕ Añadir al histórico</button>
+          <span class="hint">Cada anotación queda sellada con fecha, hora y autor automáticos, y no se puede modificar ni borrar.</span>
         </div>
+        <div id="histList" class="hist-list"></div>
       </fieldset>
 
       <fieldset>
         <legend>Gestión de visitas</legend>
         <div class="visit-box">
           <div class="field"><label>Etapa actual del funnel</label>
-            <select id="etapa">
-              <option value="prospeccion">Prospección (Nuevo Cliente)</option>
+            <select id="etapa" onchange="renderFunnelSteps()">
+              <option value="prospeccion">Prospección</option>
+              <option value="visita">Visita</option>
               <option value="oferta">Oferta</option>
               <option value="pedido">Pedido</option>
               <option value="fidelizacion">Visita de Fidelización</option>
@@ -464,7 +500,7 @@
 </div>
 
 <script>
-const STORE='pr_gestion_visitas_v1';
+const STORE='pr_gestion_visitas_v2';
 const CFG_STORE='pr_config_v1';
 const SESS='pr_session_v1';
 
@@ -490,43 +526,80 @@ let session=null;
 
 const SEED=[
   {
-    id:'demo-a', empresa:'Transportes Vigo Sur, S.L.', contacto:'Manuel Costas', telefono:'986 12 34 56',
-    email:'flota@transvigosur.es', poblacion:'Vigo', nuevo:'no',
+    id:'demo-a', empresa:'Transportes Vigo Sur, S.L.', cif:'B36001122', contacto:'Manuel Costas', telefono:'986 12 34 56',
+    email:'flota@transvigosur.es', poblacion:'Vigo', cp:'36201', nuevo:'no',
     turismos:20, combTur:'Diésel', furgonetas:45, tamFur:'Tipo 3A', combFur:'Diésel',
     udsCambiar:12, udsAmpliar:5, marcas:'Renault, Ford, Iveco',
     comentarios:'Flota de reparto regional. Renuevan por lotes cada primavera. Interés en furgón eléctrico para reparto urbano.',
-    funProspeccion:'Visita 01/04. Confirmado parque de 65 uds. Decisor: Manuel (jefe de flota). Presupuesto de renovación aprobado para Q3.',
-    funOferta:'Enviada oferta por 12 furgonetas Tipo 3A. Pendiente comparativa diésel vs. eléctrico y estudio de renting.',
-    funPedido:'', funFidelizacion:'', etapa:'oferta', ultimaVisita:'2026-04-01', vendedor:'vendedor'
+    historial:[
+      {ts:'2026-01-20T09:15:00', fase:'prospeccion', autor:'Vendedor (vendedor)', texto:'Puerta fría en el polígono de Balaídos. Identificado el responsable de flota.'},
+      {ts:'2026-02-10T11:00:00', fase:'visita', autor:'Vendedor (vendedor)', texto:'Visita con cita. Cubierta la ficha: parque de 65 uds. Decisor: Manuel (jefe de flota).'},
+      {ts:'2026-04-01T12:30:00', fase:'oferta', autor:'Vendedor (vendedor)', texto:'Enviada oferta por 12 furgonetas Tipo 3A. Pendiente comparativa diésel vs. eléctrico.'}
+    ],
+    etapa:'oferta', ultimaVisita:'2026-04-01', vendedor:'vendedor'
   },
   {
-    id:'demo-b', empresa:'Instalaciones Miño, S.L.', contacto:'Laura Prado', telefono:'988 45 67 89',
-    email:'laura@instalacionesmino.es', poblacion:'Ourense', nuevo:'no',
+    id:'demo-b', empresa:'Instalaciones Miño, S.L.', cif:'B32004455', contacto:'Laura Prado', telefono:'988 45 67 89',
+    email:'laura@instalacionesmino.es', poblacion:'Ourense', cp:'32005', nuevo:'no',
     turismos:8, combTur:'Gasolina', furgonetas:4, tamFur:'Tipo 2A', combFur:'Diésel',
     udsCambiar:3, udsAmpliar:2, marcas:'Peugeot, Citroën',
     comentarios:'Empresa de instalaciones eléctricas. Parque mixto de 12 uds. Ampliación prevista por nuevo contrato de obra.',
-    funProspeccion:'Visita anual. Parque estable, buena relación. Detectada necesidad de 2 furgonetas adicionales.',
-    funOferta:'Presentada oferta por 3 turismos + 2 furgonetas Tipo 2A con financiación a 48 meses.',
-    funPedido:'Pedido en negociación: piden mejorar valor de recompra de 2 unidades usadas. Cita de firma la próxima semana.',
-    funFidelizacion:'', etapa:'pedido', ultimaVisita:'2025-08-25', vendedor:'vendedor'
+    historial:[
+      {ts:'2025-06-05T10:00:00', fase:'prospeccion', autor:'Vendedor (vendedor)', texto:'Primer contacto en feria del sector.'},
+      {ts:'2025-07-15T09:30:00', fase:'visita', autor:'Vendedor (vendedor)', texto:'Visita anual. Parque estable de 12 uds. Detectada necesidad de 2 furgonetas.'},
+      {ts:'2025-08-20T13:00:00', fase:'oferta', autor:'Vendedor (vendedor)', texto:'Presentada oferta por 3 turismos + 2 furgonetas con financiación a 48 meses.'},
+      {ts:'2025-08-25T17:00:00', fase:'pedido', autor:'Vendedor (vendedor)', texto:'Pedido en negociación: piden mejorar recompra de 2 usados. Cita de firma la próxima semana.'}
+    ],
+    etapa:'pedido', ultimaVisita:'2025-08-25', vendedor:'vendedor'
   },
   {
-    id:'demo-c', empresa:'Fontanería García (autónomo)', contacto:'Antonio García', telefono:'699 00 11 22',
-    email:'', poblacion:'Pontevedra', nuevo:'si',
+    id:'demo-c', empresa:'Fontanería García (autónomo)', cif:'36998877X', contacto:'Antonio García', telefono:'699 00 11 22',
+    email:'', poblacion:'Pontevedra', cp:'36002', nuevo:'si',
     turismos:1, combTur:'Gasolina', furgonetas:0, tamFur:'', combFur:'',
     udsCambiar:1, udsAmpliar:0, marcas:'Dacia',
-    comentarios:'Cliente nuevo, autónomo con 1 vehículo. Bajo potencial → sin programación de visitas, atención bajo demanda.',
-    funProspeccion:'Primer contacto en el concesionario. Interesado en cambiar su vehículo actual por una furgoneta pequeña.',
-    funOferta:'', funPedido:'', funFidelizacion:'', etapa:'prospeccion', ultimaVisita:'2026-07-30', vendedor:'ana'
+    comentarios:'Cliente nuevo, autónomo con 1 vehículo. Bajo potencial → atención bajo demanda.',
+    historial:[
+      {ts:'2026-07-30T16:00:00', fase:'prospeccion', autor:'Ana Souto (ana)', texto:'Primer contacto en el concesionario. Autónomo, 1 vehículo. Interés en furgoneta pequeña.'}
+    ],
+    etapa:'prospeccion', ultimaVisita:'2026-07-30', vendedor:'ana'
   },
   {
-    id:'demo-d', empresa:'Automóviles Ría, S.L.', contacto:'', telefono:'986 77 88 99',
-    email:'', poblacion:'Marín', nuevo:'no',
+    id:'demo-d', empresa:'Automóviles Ría, S.L.', cif:'', contacto:'', telefono:'986 77 88 99',
+    email:'', poblacion:'Marín', cp:'36900', nuevo:'no',
     turismos:6, combTur:'Diésel', furgonetas:3, tamFur:'Tipo 2A', combFur:'Diésel',
     udsCambiar:2, udsAmpliar:1, marcas:'',
-    comentarios:'Ejemplo de ALARMA: pasó a Oferta con la ficha incompleta (faltan contacto, marcas y resultado de prospección).',
-    funProspeccion:'', funOferta:'Oferta preliminar enviada por email.', funPedido:'', funFidelizacion:'',
+    comentarios:'Ejemplo de ALARMA: está en Oferta con la ficha incompleta (faltan CIF, contacto y marcas).',
+    historial:[
+      {ts:'2026-05-15T10:00:00', fase:'oferta', autor:'Ana Souto (ana)', texto:'Oferta preliminar enviada por email (ficha sin completar).'}
+    ],
     etapa:'oferta', ultimaVisita:'2026-05-15', vendedor:'ana'
+  },
+  {
+    id:'demo-e', empresa:'Obras y Servicios Rías Baixas, S.L.', cif:'B36778899', contacto:'Marta Refojo', telefono:'986 55 44 33',
+    email:'compras@obrasriasbaixas.es', poblacion:'Vilagarcía de Arousa', cp:'36600', nuevo:'no',
+    turismos:5, combTur:'Diésel', furgonetas:10, tamFur:'Tipo 2A', combFur:'Diésel',
+    udsCambiar:4, udsAmpliar:2, marcas:'Peugeot, Opel',
+    comentarios:'Constructora con parque mixto. En fase de perfilado.',
+    historial:[
+      {ts:'2026-08-01T09:00:00', fase:'prospeccion', autor:'Vendedor (vendedor)', texto:'Puerta fría. Recogidos datos básicos y CIF.'},
+      {ts:'2026-08-20T11:30:00', fase:'visita', autor:'Vendedor (vendedor)', texto:'Visita con cita. Cubierta la ficha de flota (15 uds).'}
+    ],
+    etapa:'visita', ultimaVisita:'2026-08-20', vendedor:'vendedor'
+  },
+  {
+    id:'demo-f', empresa:'Grupo Logístico Atlántico, S.A.', cif:'A36112233', contacto:'Xoán Vidal', telefono:'986 33 22 11',
+    email:'flotas@logatlantico.es', poblacion:'O Porriño', cp:'36400', nuevo:'no',
+    turismos:30, combTur:'Diésel', furgonetas:40, tamFur:'Tipo 3A', combFur:'Diésel',
+    udsCambiar:20, udsAmpliar:8, marcas:'Fiat, Iveco, Renault',
+    comentarios:'Gran cuenta (parque 70). Cliente consolidado, en fidelización.',
+    historial:[
+      {ts:'2025-02-10T10:00:00', fase:'prospeccion', autor:'Luis Vega (luis)', texto:'Contacto inicial vía referencia de otro cliente.'},
+      {ts:'2025-03-05T12:00:00', fase:'visita', autor:'Luis Vega (luis)', texto:'Visita y perfilado. Parque de 70 uds confirmado.'},
+      {ts:'2025-04-01T09:00:00', fase:'oferta', autor:'Luis Vega (luis)', texto:'Oferta por renovación de 20 unidades.'},
+      {ts:'2025-05-10T16:00:00', fase:'pedido', autor:'Luis Vega (luis)', texto:'Pedido confirmado de 20 unidades. Entregas escalonadas.'},
+      {ts:'2026-05-12T10:30:00', fase:'fidelizacion', autor:'Luis Vega (luis)', texto:'Visita de fidelización anual. Satisfacción alta. Preparar propuesta de ampliación.'}
+    ],
+    etapa:'fidelizacion', ultimaVisita:'2026-05-12', vendedor:'luis'
   }
 ];
 
@@ -550,12 +623,13 @@ function cadenciaTxt(t){ return t==='A'?`visita cada ${CFG.cadenciaA} días`:t==
 
 /* ---- Etapas del funnel ---- */
 const STAGES=[
-  {key:'prospeccion',  label:'Prospección (Nuevo Cliente)', short:'Prospección'},
-  {key:'oferta',       label:'Oferta',                      short:'Oferta'},
-  {key:'pedido',       label:'Pedido',                      short:'Pedido'},
-  {key:'fidelizacion', label:'Visita de Fidelización',      short:'Fidelización'}
+  {key:'prospeccion',  label:'Prospección',            short:'Prospección'},
+  {key:'visita',       label:'Visita',                 short:'Visita'},
+  {key:'oferta',       label:'Oferta',                 short:'Oferta'},
+  {key:'pedido',       label:'Pedido',                 short:'Pedido'},
+  {key:'fidelizacion', label:'Visita de Fidelización', short:'Fidelización'}
 ];
-const ETAPA_MAP={'Prospección':'prospeccion','Oferta':'oferta','Cierre':'pedido','Pedido':'pedido','Fidelización':'fidelizacion'};
+const ETAPA_MAP={'Prospección':'prospeccion','Visita':'visita','Oferta':'oferta','Cierre':'pedido','Pedido':'pedido','Fidelización':'fidelizacion'};
 function normEtapa(e){ if(!e) return 'prospeccion'; if(ETAPA_MAP[e]) return ETAPA_MAP[e]; return STAGES.some(s=>s.key===e)?e:'prospeccion'; }
 function etapaShort(e){ const s=STAGES.find(x=>x.key===normEtapa(e)); return s?s.short:e; }
 function etapaLabel(e){ const s=STAGES.find(x=>x.key===normEtapa(e)); return s?s.label:e; }
@@ -563,15 +637,18 @@ function etapaLabel(e){ const s=STAGES.find(x=>x.key===normEtapa(e)); return s?s
 /* ---- Campos obligatorios de la ficha para pasar de Prospección ---- */
 function fichaFaltantes(c){
   const f=[];
+  if(!(c.cif||'').trim()) f.push('CIF');
+  if(!(c.cp||'').trim()) f.push('Código postal');
   if(!(c.contacto||'').trim()) f.push('Persona de contacto');
   if(!((c.telefono||'').trim() || (c.email||'').trim())) f.push('Teléfono o email');
   if(!(c.poblacion||'').trim()) f.push('Población');
   if(parqueDe(c)<=0) f.push('Parque (turismos o furgonetas)');
   if(!(c.marcas||'').trim()) f.push('Marcas actuales');
-  if(!(c.funProspeccion||'').trim()) f.push('Resultado de Prospección');
+  if(!(c.historial && c.historial.length)) f.push('Al menos una anotación en el histórico');
   if(!(c.vendedor||'').trim()) f.push('Comercial asignado');
   return f;
 }
+/* La ficha completa es obligatoria a partir de la fase Visita (Prospección es puerta fría sin datos) */
 function requiereFicha(etapa){ return normEtapa(etapa)!=='prospeccion'; }
 function incumple(c){ return requiereFicha(c.etapa) && fichaFaltantes(c).length>0; }
 
@@ -735,12 +812,12 @@ function renderCalendar(){
 }
 
 /* ---- Cuadro de mando (Jefe/Admin) ---- */
-const PHASE_COLOR={prospeccion:'#595959', oferta:'#FFC000', pedido:'#002B5C', fidelizacion:'#70AD47'};
+const PHASE_COLOR={prospeccion:'#595959', visita:'#4F81BD', oferta:'#FFC000', pedido:'#002B5C', fidelizacion:'#70AD47'};
 function renderDashboard(){
   const vis=visibleData();
   const total=vis.length;
   // Reparto por fase
-  const pc={prospeccion:0,oferta:0,pedido:0,fidelizacion:0};
+  const pc=Object.fromEntries(STAGES.map(s=>[s.key,0]));
   vis.forEach(c=>{ pc[normEtapa(c.etapa)]++; });
   const maxP=Math.max(1, ...STAGES.map(s=>pc[s.key]));
   document.getElementById('dashPhases').innerHTML =
@@ -755,17 +832,17 @@ function renderDashboard(){
   vis.forEach(c=>{ const v=c.vendedor||'__none__'; (groups[v]=groups[v]||[]).push(c); });
   const nom=u=>{ if(u==='__none__') return 'Sin asignar'; const x=COMERCIALES.find(c=>c.user===u); return x?x.nombre:u; };
   const rows=Object.keys(groups).map(v=>{
-    const arr=groups[v], t={A:0,B:0,C:0}, ph={prospeccion:0,oferta:0,pedido:0,fidelizacion:0}; let inc=0;
+    const arr=groups[v], t={A:0,B:0,C:0}, ph=Object.fromEntries(STAGES.map(s=>[s.key,0])); let inc=0;
     arr.forEach(c=>{ t[tipoDe(parqueDe(c))]++; ph[normEtapa(c.etapa)]++; if(incumple(c)) inc++; });
     return {nombre:nom(v), total:arr.length, t, ph, inc};
   }).sort((a,b)=>b.total-a.total);
   const maxT=Math.max(1, ...rows.map(r=>r.total));
-  let h=`<thead><tr><th>Comercial</th><th>Total</th><th>A</th><th>B</th><th>C</th><th>Prosp.</th><th>Oferta</th><th>Pedido</th><th>Fidel.</th><th>⚠ Fichas</th></tr></thead><tbody>`;
+  let h=`<thead><tr><th>Comercial</th><th>Total</th><th>A</th><th>B</th><th>C</th><th>Prosp.</th><th>Visita</th><th>Oferta</th><th>Pedido</th><th>Fidel.</th><th>⚠ Fichas</th></tr></thead><tbody>`;
   h+=rows.map(r=>`<tr>
       <td style="font-weight:600">${esc(r.nombre)}</td>
       <td><div class="minibar"><div class="mf" style="width:${Math.round(r.total*100/maxT)}%"></div><span>${r.total}</span></div></td>
       <td class="num">${r.t.A}</td><td class="num">${r.t.B}</td><td class="num">${r.t.C}</td>
-      <td class="num">${r.ph.prospeccion}</td><td class="num">${r.ph.oferta}</td><td class="num">${r.ph.pedido}</td><td class="num">${r.ph.fidelizacion}</td>
+      <td class="num">${r.ph.prospeccion}</td><td class="num">${r.ph.visita}</td><td class="num">${r.ph.oferta}</td><td class="num">${r.ph.pedido}</td><td class="num">${r.ph.fidelizacion}</td>
       <td class="num">${r.inc?`<span class="warn-icon" title="Fichas incompletas en Oferta+">${r.inc}</span>`:'0'}</td>
     </tr>`).join('');
   h+=`</tbody>`;
@@ -780,15 +857,16 @@ function openModal(id){
   document.getElementById('delBtn').style.display=c?'inline-block':'none';
   const g=id=>document.getElementById(id);
   g('cid').value=c?c.id:'';
-  g('empresa').value=c?.empresa||''; g('contacto').value=c?.contacto||''; g('telefono').value=c?.telefono||'';
-  g('email').value=c?.email||''; g('poblacion').value=c?.poblacion||''; g('nuevo').value=c?.nuevo||'no';
+  g('empresa').value=c?.empresa||''; g('cif').value=c?.cif||''; g('contacto').value=c?.contacto||''; g('telefono').value=c?.telefono||'';
+  g('email').value=c?.email||''; g('poblacion').value=c?.poblacion||''; g('cp').value=c?.cp||''; g('nuevo').value=c?.nuevo||'no';
   g('turismos').value=c?.turismos??0; g('combTur').value=c?.combTur||''; g('furgonetas').value=c?.furgonetas??0;
   g('tamFur').value=c?.tamFur||''; g('combFur').value=c?.combFur||'';
   g('udsCambiar').value=c?.udsCambiar??0; g('udsAmpliar').value=c?.udsAmpliar??0;
   g('marcas').value=c?.marcas||''; g('comentarios').value=c?.comentarios||'';
-  g('funProspeccion').value=c?.funProspeccion||''; g('funOferta').value=c?.funOferta||'';
-  g('funPedido').value=c?.funPedido||''; g('funFidelizacion').value=c?.funFidelizacion||'';
   g('etapa').value=normEtapa(c?.etapa); g('ultimaVisita').value=c?.ultimaVisita||'';
+  g('histTexto').value=''; g('histFase').value=normEtapa(c?.etapa);
+  modalHist = (c && Array.isArray(c.historial)) ? c.historial.slice() : [];
+  renderHist();
   fillComerciales();
   g('comercial').value = c?.vendedor || (session && session.role==='vendedor' ? session.user : COMERCIALES[0].user);
   // El vendedor no puede reasignar cartera: se le fija a sí mismo y se bloquea
@@ -796,6 +874,39 @@ function openModal(id){
   calcTipo(); updateProxPreview();
 }
 function closeModal(){ document.getElementById('overlay').classList.remove('open'); }
+
+/* ---- Histórico inmutable del funnel ---- */
+let modalHist=[];
+function fmtDT(iso){ if(!iso) return ''; const d=new Date(iso); if(isNaN(d)) return iso; return d.toLocaleString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+function renderFunnelSteps(){
+  const cur=normEtapa(document.getElementById('etapa').value);
+  const idx=STAGES.findIndex(s=>s.key===cur);
+  document.getElementById('funnelSteps').innerHTML=STAGES.map((s,i)=>
+    `<div class="fstep ${i<=idx?'done':''} ${i===idx?'cur':''}"><span class="fnum">${i+1}</span>${s.short}</div>`
+  ).join('<span class="fsep">›</span>');
+}
+function renderHist(){
+  renderFunnelSteps();
+  const list=document.getElementById('histList');
+  if(!modalHist.length){ list.innerHTML='<div class="hist-empty">Sin acciones registradas todavía.</div>'; return; }
+  const ordered=modalHist.slice().sort((a,b)=> (b.ts||'').localeCompare(a.ts||''));
+  list.innerHTML=ordered.map(e=>{
+    const k=normEtapa(e.fase);
+    return `<div class="hist-item">
+      <div class="hist-meta"><span class="etapa etapa-${k}">${etapaShort(e.fase)}</span> <span class="hist-when">${fmtDT(e.ts)}</span> · <span class="hist-who">${esc(e.autor||'')}</span></div>
+      <div class="hist-text">${esc(e.texto||'').replace(/\n/g,'<br>')}</div>
+    </div>`;
+  }).join('');
+}
+function addHistEntry(){
+  const fase=document.getElementById('histFase').value;
+  const texto=document.getElementById('histTexto').value.trim();
+  if(!texto){ alert('Escribe la anotación antes de añadirla al histórico.'); return; }
+  const autor = session ? `${session.nombre} (${session.user})` : '—';
+  modalHist.push({ts:new Date().toISOString(), fase, autor, texto});
+  document.getElementById('histTexto').value='';
+  renderHist();
+}
 
 function calcTipo(){
   const parque=(+document.getElementById('turismos').value||0)+(+document.getElementById('furgonetas').value||0);
@@ -833,15 +944,15 @@ function saveClient(){
     turismos:+g('turismos')||0, combTur:g('combTur'), furgonetas:+g('furgonetas')||0,
     tamFur:g('tamFur'), combFur:g('combFur'), udsCambiar:+g('udsCambiar')||0, udsAmpliar:+g('udsAmpliar')||0,
     marcas:g('marcas').trim(), comentarios:g('comentarios').trim(),
-    funProspeccion:g('funProspeccion').trim(), funOferta:g('funOferta').trim(),
-    funPedido:g('funPedido').trim(), funFidelizacion:g('funFidelizacion').trim(),
+    cif:g('cif').trim(), cp:g('cp').trim(),
+    historial: modalHist.slice(),
     etapa:g('etapa'), ultimaVisita:g('ultimaVisita'),
     vendedor: (session && session.role==='vendedor') ? session.user : (document.getElementById('comercial').value||'')
   };
   if(requiereFicha(obj.etapa)){
     const falta=fichaFaltantes(obj);
     if(falta.length){
-      alert('No se puede guardar la empresa en la fase «'+etapaLabel(obj.etapa)+'» con la ficha incompleta.\n\nFaltan campos obligatorios:\n· '+falta.join('\n· ')+'\n\nComplétalos, o deja la empresa en la fase «Prospección (Nuevo Cliente)» hasta tener la ficha.');
+      alert('No se puede guardar la empresa en la fase «'+etapaLabel(obj.etapa)+'» con la ficha incompleta.\n\nFaltan campos obligatorios:\n· '+falta.join('\n· ')+'\n\nComplétalos, o deja la empresa en la fase «Prospección» hasta tener la ficha.');
       return;
     }
   }
@@ -872,17 +983,18 @@ function importJSON(e){
   r.readAsText(f);
 }
 function exportCSV(){
-  const cols=[['empresa','Empresa'],['comercial','Comercial asignado'],['contacto','Contacto'],['telefono','Teléfono'],['email','Email'],
-    ['poblacion','Población'],['nuevo','Nuevo'],['turismos','Nº turismos'],['combTur','Combustión turismos'],
+  const cols=[['empresa','Empresa'],['cif','CIF'],['comercial','Comercial asignado'],['contacto','Contacto'],['telefono','Teléfono'],['email','Email'],
+    ['poblacion','Población'],['cp','Código postal'],['nuevo','Nuevo'],['turismos','Nº turismos'],['combTur','Combustión turismos'],
     ['furgonetas','Nº furgonetas'],['tamFur','Tamaño furgoneta'],['combFur','Combustión furgonetas'],
     ['udsCambiar','Uds a cambiar'],['udsAmpliar','Uds a ampliar'],['marcas','Marcas'],['comentarios','Comentarios'],
-    ['etapa','Etapa funnel'],['funProspeccion','Resultado prospección'],['funOferta','Resultado oferta'],
-    ['funPedido','Resultado pedido'],['funFidelizacion','Resultado fidelización'],['ultimaVisita','Última visita']];
+    ['etapa','Etapa funnel'],['nHist','Nº acciones'],['ultAccion','Última acción'],['ultimaVisita','Última visita']];
   const nomComercial=u=>{ const x=COMERCIALES.find(c=>c.user===u); return x?x.nombre:(u||''); };
   const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
   let out=cols.map(c=>q(c[1])).concat([q('Parque'),q('Tipo'),q('Próxima visita')]).join(';')+'\n';
   visibleData().forEach(c=>{
-    c={...c, comercial:nomComercial(c.vendedor), etapa:etapaLabel(c.etapa)};
+    const hist=Array.isArray(c.historial)?c.historial:[];
+    const ult=hist.length?hist.slice().sort((a,b)=>(b.ts||'').localeCompare(a.ts||''))[0]:null;
+    c={...c, comercial:nomComercial(c.vendedor), etapa:etapaLabel(c.etapa), nHist:hist.length, ultAccion: ult?`[${etapaShort(ult.fase)} · ${fmtDT(ult.ts)}] ${ult.texto}`:''};
     const parque=parqueDe(c), t=tipoDe(parque), p=proximaDe(c);
     out+=cols.map(col=>q(c[col[0]])).concat([q(parque),q(t),q(p?fmt(p):'Sin programación')]).join(';')+'\n';
   });
