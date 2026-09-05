@@ -222,6 +222,20 @@
   .aprob-item{display:flex; align-items:center; gap:12px; justify-content:space-between; border:1px solid var(--linea); border-left:3px solid var(--rojo); border-radius:8px; padding:10px 12px; margin-bottom:8px; flex-wrap:wrap}
   .aprob-info{min-width:220px; flex:1}
   .aprob-actions{display:flex; gap:6px; flex-wrap:wrap}
+  /* Agenda de tareas */
+  .task-add{background:#f7f9fb; border:1px solid var(--linea); border-radius:8px; padding:12px 14px; margin-bottom:10px}
+  .task-list{display:flex; flex-direction:column; gap:6px}
+  .task-item{display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid var(--linea); border-radius:6px; padding:7px 10px; flex-wrap:wrap}
+  .task-item.task-venc{border-left:3px solid var(--rojo)}
+  .task-item.task-done{opacity:.6}
+  .task-main{flex:1; min-width:200px; font-size:13px}
+  .task-date{font-weight:700; font-variant-numeric:tabular-nums; margin-right:6px; color:var(--azul)}
+  .task-badge{font-size:11px; font-weight:700; padding:1px 8px; border-radius:20px; margin-left:6px}
+  .task-badge.ok{background:#eaf5e2; color:var(--verde)}
+  .task-badge.pend{background:#eef4fb; color:var(--azul)}
+  .task-badge.venc{background:#fdeaea; color:var(--rojo)}
+  .task-actions{display:flex; gap:6px; align-items:center}
+  .cal-ev.tarea{background:var(--amarillo); color:#5a4a00}
 
   @media(max-width:980px){ .funnel{grid-template-columns:repeat(2,1fr)} }
   @media(max-width:720px){ .funnel{grid-template-columns:1fr} th.hide-sm,td.hide-sm{display:none} .cal-cell{min-height:72px} }
@@ -273,6 +287,7 @@
   </div></div>
   <div class="kpis" id="kpis"></div>
   <div id="aprobStrip"></div>
+  <div id="tareaStrip"></div>
   <div id="fichaStrip"></div>
 
   <div class="toolbar">
@@ -461,6 +476,19 @@
           <div class="field"><label>&nbsp;</label><button class="btn-ghost" onclick="registrarVisitaHoy()">📌 Registrar visita hoy</button></div>
         </div>
       </fieldset>
+
+      <fieldset>
+        <legend>Agenda de tareas / acciones programadas</legend>
+        <div class="task-add">
+          <div class="grid">
+            <div class="field"><label>Fecha</label><input type="date" id="taskFecha"></div>
+            <div class="field full"><label>Acción a realizar</label><input id="taskDesc" placeholder="Ej. Llamar para cerrar oferta, enviar propuesta de renting…"></div>
+          </div>
+          <button class="btn-ghost" type="button" onclick="addTask()">➕ Programar acción</button>
+          <span class="hint">Las acciones aparecen en el calendario del vendedor. Si vencen sin realizarse, avisan al vendedor y a su superior.</span>
+        </div>
+        <div id="taskList" class="task-list"></div>
+      </fieldset>
     </div>
     <div class="modal-foot">
       <button class="btn-danger" id="delBtn" style="display:none" onclick="deleteClient()">Eliminar</button>
@@ -559,6 +587,10 @@ const SEED=[
       {ts:'2026-02-10T11:00:00', fase:'visita', autor:'Vendedor (vendedor)', texto:'Visita con cita. Cubierta la ficha: parque de 65 uds. Decisor: Manuel (jefe de flota).'},
       {ts:'2026-04-01T12:30:00', fase:'oferta', autor:'Vendedor (vendedor)', texto:'Enviada oferta por 12 furgonetas Tipo 3A. Pendiente comparativa diésel vs. eléctrico.'}
     ],
+    tareas:[
+      {id:'ta1', fecha:'2026-03-20', desc:'Enviar oferta por email', estado:'hecha', creadoPor:'Vendedor (vendedor)', hechaPor:'Vendedor (vendedor)', hechaTs:'2026-03-20T12:00:00'},
+      {id:'ta2', fecha:'2026-08-25', desc:'Cerrar comparativa diésel/eléctrico y llamar a Manuel', estado:'pendiente', creadoPor:'Vendedor (vendedor)'}
+    ],
     etapa:'oferta', ultimaVisita:'2026-04-01', vendedor:'vendedor'
   },
   {
@@ -572,6 +604,9 @@ const SEED=[
       {ts:'2025-07-15T09:30:00', fase:'visita', autor:'Vendedor (vendedor)', texto:'Visita anual. Parque estable de 12 uds. Detectada necesidad de 2 furgonetas.'},
       {ts:'2025-08-20T13:00:00', fase:'oferta', autor:'Vendedor (vendedor)', texto:'Presentada oferta por 3 turismos + 2 furgonetas con financiación a 48 meses.'},
       {ts:'2025-08-25T17:00:00', fase:'pedido', autor:'Vendedor (vendedor)', texto:'Pedido en negociación: piden mejorar recompra de 2 usados. Cita de firma la próxima semana.'}
+    ],
+    tareas:[
+      {id:'tb1', fecha:'2026-09-20', desc:'Confirmar fecha de firma del pedido', estado:'pendiente', creadoPor:'Vendedor (vendedor)'}
     ],
     etapa:'pedido', ultimaVisita:'2025-08-25', vendedor:'vendedor'
   },
@@ -621,6 +656,9 @@ const SEED=[
       {ts:'2025-04-01T09:00:00', fase:'oferta', autor:'Luis Vega (luis)', texto:'Oferta por renovación de 20 unidades.'},
       {ts:'2025-05-10T16:00:00', fase:'pedido', autor:'Luis Vega (luis)', texto:'Pedido confirmado de 20 unidades. Entregas escalonadas.'},
       {ts:'2026-05-12T10:30:00', fase:'fidelizacion', autor:'Luis Vega (luis)', texto:'Visita de fidelización anual. Satisfacción alta. Preparar propuesta de ampliación.'}
+    ],
+    tareas:[
+      {id:'tf1', fecha:'2026-12-01', desc:'Preparar propuesta de ampliación de flota', estado:'pendiente', creadoPor:'Luis Vega (luis)'}
     ],
     etapa:'fidelizacion', ultimaVisita:'2026-05-12', vendedor:'luis'
   },
@@ -744,7 +782,7 @@ function render(){
     }
     const tr=document.createElement('tr');
     tr.innerHTML=`
-      <td class="empresa-cell" onclick="openModal('${c.id}')">${esc(c.empresa)||'(sin nombre)'}${c.nuevo==='si'?' <span class="muted">· nuevo</span>':''}${incumple(c)?` <span class="warn-icon" title="Ficha incompleta para la fase «${etapaShort(c.etapa)}»">⚠</span>`:''}${c.zonaAprob&&c.zonaAprob.estado==='pendiente'?` <span class="warn-icon" title="Alta fuera de zona · pendiente de aprobación">🔐</span>`:''}</td>
+      <td class="empresa-cell" onclick="openModal('${c.id}')">${esc(c.empresa)||'(sin nombre)'}${c.nuevo==='si'?' <span class="muted">· nuevo</span>':''}${incumple(c)?` <span class="warn-icon" title="Ficha incompleta para la fase «${etapaShort(c.etapa)}»">⚠</span>`:''}${c.zonaAprob&&c.zonaAprob.estado==='pendiente'?` <span class="warn-icon" title="Alta fuera de zona · pendiente de aprobación">🔐</span>`:''}${tareasVencidas(c).length?` <span class="warn-icon" title="Acción programada vencida sin realizar">⏰</span>`:''}</td>
       <td class="hide-sm">${esc(c.poblacion)||'<span class="muted">—</span>'}</td>
       <td><span class="badge tipo-${c.tipo}">${c.tipo}</span></td>
       <td class="num">${c.parque}</td>
@@ -776,6 +814,16 @@ function render(){
   } else { as.className=''; as.innerHTML=''; }
   const ac=document.getElementById('aprobCount'); if(ac){ const np=canSeeAll()?pendientesAprob().length:0; ac.textContent=np?`(${np})`:''; }
 
+  // Bloque 3: acciones (tareas) vencidas sin realizar
+  const taccs=[];
+  visibleData().forEach(c=>{ tareasVencidas(c).forEach(t=>taccs.push({c,t})); });
+  const tsr=document.getElementById('tareaStrip');
+  if(taccs.length){
+    tsr.className='venc-strip';
+    tsr.innerHTML=`<b>⏰ ${taccs.length} acción(es) programada(s) vencida(s) sin realizar:</b> `+
+      taccs.map(x=>`<span class="item" onclick="openModal('${x.c.id}')">${esc(x.c.empresa)} · ${esc(x.t.desc)} (${fmt(x.t.fecha)})</span>`).join('');
+  } else { tsr.className=''; tsr.innerHTML=''; }
+
   renderKpis();
   if(viewMode==='cal') renderCalendar();
   if(viewMode==='dash') renderDashboard();
@@ -783,8 +831,8 @@ function render(){
 
 function renderKpis(){
   const vis=visibleData();
-  const t={A:0,B:0,C:0}; let venc=0, incompl=0;
-  vis.forEach(c=>{ t[tipoDe(parqueDe(c))]++; const p=proximaDe(c); if(p&&diasHasta(p)<0) venc++; if(incumple(c)) incompl++; });
+  const t={A:0,B:0,C:0}; let venc=0, incompl=0, taskVenc=0;
+  vis.forEach(c=>{ t[tipoDe(parqueDe(c))]++; const p=proximaDe(c); if(p&&diasHasta(p)<0) venc++; if(incumple(c)) incompl++; taskVenc+=tareasVencidas(c).length; });
   const k=document.getElementById('kpis');
   k.innerHTML=`
     <div class="kpi"><div class="n">${vis.length}</div><div class="l">Clientes</div></div>
@@ -792,7 +840,8 @@ function renderKpis(){
     <div class="kpi"><div class="n">${t.B}</div><div class="l">Tipo B · ${CFG.cadenciaB} días</div></div>
     <div class="kpi"><div class="n">${t.C}</div><div class="l">Tipo C · sin prog.</div></div>
     <div class="kpi ${venc?'warn':'ok'}"><div class="n">${venc}</div><div class="l">Visitas vencidas</div></div>
-    <div class="kpi ${incompl?'warn':'ok'}"><div class="n">${incompl}</div><div class="l">Fichas incompletas · Oferta+</div></div>`;
+    <div class="kpi ${incompl?'warn':'ok'}"><div class="n">${incompl}</div><div class="l">Fichas incompletas · Oferta+</div></div>
+    <div class="kpi ${taskVenc?'warn':'ok'}"><div class="n">${taskVenc}</div><div class="l">Acciones vencidas</div></div>`;
 }
 
 function sortBy(key){ if(sort.key===key) sort.dir*=-1; else {sort.key=key; sort.dir=1;} render(); }
@@ -838,6 +887,18 @@ function renderCalendar(){
     }
   });
 
+  // tareas programadas (pendientes) del mes visible
+  visibleData().forEach(c=>{
+    (c.tareas||[]).forEach(tk=>{
+      if(tk.estado!=='pendiente' || !tk.fecha) return;
+      const dt=new Date(tk.fecha+'T00:00:00'); if(isNaN(dt)) return;
+      if(dt.getFullYear()===calRef.y && dt.getMonth()===calRef.m){
+        const key=dt.getDate();
+        (evByDay[key]=evByDay[key]||[]).push({c, tarea:tk, venc:diasHasta(dt)<0});
+      }
+    });
+  });
+
   // strip de vencidas
   const strip=document.getElementById('vencStrip');
   if(vencidas.length){
@@ -862,7 +923,13 @@ function renderCalendar(){
   grid.innerHTML=cells.map(cell=>{
     const isToday=!cell.other && cell.n===tD && calRef.m===tM && calRef.y===tY;
     const evs=(!cell.other && evByDay[cell.n])?evByDay[cell.n]:[];
-    const evHtml=evs.map(e=>`<span class="cal-ev ${e.venc?'venc':'tipo-'+e.t} " onclick="openModal('${e.c.id}')" title="${esc(e.c.empresa)}">${esc(e.c.empresa)}</span>`).join('');
+    const evHtml=evs.map(e=>{
+      const isT=!!e.tarea;
+      const cls=e.venc?'venc':(isT?'tarea':'tipo-'+e.t);
+      const label=isT?('⏰ '+e.c.empresa):e.c.empresa;
+      const title=isT?(e.c.empresa+' · '+e.tarea.desc):e.c.empresa;
+      return `<span class="cal-ev ${cls}" onclick="openModal('${e.c.id}')" title="${esc(title)}">${esc(label)}</span>`;
+    }).join('');
     return `<div class="cal-cell ${cell.other?'other':''} ${isToday?'today':''}"><span class="daynum">${cell.n}</span>${evHtml}</div>`;
   }).join('');
 }
@@ -923,6 +990,9 @@ function openModal(id){
   g('histTexto').value=''; g('histFase').value=normEtapa(c?.etapa);
   modalHist = (c && Array.isArray(c.historial)) ? c.historial.slice() : [];
   renderHist();
+  g('taskFecha').value=''; g('taskDesc').value='';
+  modalTasks = (c && Array.isArray(c.tareas)) ? c.tareas.map(t=>({...t})) : [];
+  renderTasks();
   fillComerciales();
   g('comercial').value = c?.vendedor || (session && session.role==='vendedor' ? session.user : COMERCIALES[0].user);
   // El vendedor no puede reasignar cartera: se le fija a sí mismo y se bloquea
@@ -964,6 +1034,40 @@ function addHistEntry(){
   renderHist();
 }
 
+/* ---- Agenda de tareas ---- */
+let modalTasks=[];
+function tareasVencidas(c){ const t0=today0(); return (c.tareas||[]).filter(x=>x.estado==='pendiente' && x.fecha && new Date(x.fecha+'T00:00:00')<t0); }
+function renderTasks(){
+  const list=document.getElementById('taskList');
+  if(!modalTasks.length){ list.innerHTML='<div class="hist-empty">Sin acciones programadas.</div>'; return; }
+  const ordered=modalTasks.slice().sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+  list.innerHTML=ordered.map(t=>{
+    const venc = t.estado==='pendiente' && t.fecha && diasHasta(new Date(t.fecha+'T00:00:00'))<0;
+    const cls = t.estado==='hecha'?'task-done':(venc?'task-venc':'');
+    const badge = t.estado==='hecha'?'<span class="task-badge ok">Hecha</span>':(venc?'<span class="task-badge venc">Vencida</span>':'<span class="task-badge pend">Pendiente</span>');
+    const acc = t.estado==='pendiente'
+      ? `<button class="btn-ghost btn-sm" onclick="taskDone('${t.id}')">✓ Hecha</button><button class="btn-danger btn-sm" onclick="taskDel('${t.id}')">✕</button>`
+      : `<span class="muted">${esc(t.hechaPor||'')} ${t.hechaTs?fmtDT(t.hechaTs):''}</span>`;
+    return `<div class="task-item ${cls}"><div class="task-main"><span class="task-date">${t.fecha?fmt(t.fecha):''}</span>${esc(t.desc||'')}${badge}</div><div class="task-actions">${acc}</div></div>`;
+  }).join('');
+}
+function addTask(){
+  const fecha=document.getElementById('taskFecha').value;
+  const desc=document.getElementById('taskDesc').value.trim();
+  if(!fecha){ alert('Indica la fecha de la acción.'); return; }
+  if(!desc){ alert('Describe la acción a realizar.'); return; }
+  modalTasks.push({id:'t'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36), fecha, desc, estado:'pendiente', creadoPor: session?`${session.nombre} (${session.user})`:'', ts:new Date().toISOString()});
+  document.getElementById('taskFecha').value=''; document.getElementById('taskDesc').value='';
+  renderTasks();
+}
+function taskDone(id){
+  const t=modalTasks.find(x=>x.id===id); if(!t) return;
+  t.estado='hecha'; t.hechaPor=session?`${session.nombre} (${session.user})`:''; t.hechaTs=new Date().toISOString();
+  modalHist.push({ts:new Date().toISOString(), fase:normEtapa(document.getElementById('etapa').value), autor:t.hechaPor, texto:'Acción realizada: '+t.desc});
+  renderTasks(); renderHist();
+}
+function taskDel(id){ if(!confirm('¿Eliminar esta acción programada?')) return; modalTasks=modalTasks.filter(x=>x.id!==id); renderTasks(); }
+
 function calcTipo(){
   const parque=(+document.getElementById('turismos').value||0)+(+document.getElementById('furgonetas').value||0);
   const t=tipoDe(parque);
@@ -1001,7 +1105,7 @@ function saveClient(){
     tamFur:g('tamFur'), combFur:g('combFur'), udsCambiar:+g('udsCambiar')||0, udsAmpliar:+g('udsAmpliar')||0,
     marcas:g('marcas').trim(), comentarios:g('comentarios').trim(),
     cif:g('cif').trim(), cp:g('cp').trim(),
-    historial: modalHist.slice(),
+    historial: modalHist.slice(), tareas: modalTasks.map(t=>({...t})),
     etapa:g('etapa'), ultimaVisita:g('ultimaVisita'),
     vendedor: (session && session.role==='vendedor') ? session.user : (document.getElementById('comercial').value||'')
   };
