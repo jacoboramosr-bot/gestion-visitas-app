@@ -204,6 +204,9 @@
   .ind-filters .field label{font-size:11px; text-transform:uppercase; letter-spacing:.4px}
   .ind-filters select, .ind-filters input{padding:7px 9px; border:1px solid var(--gris-claro); border-radius:6px; font:inherit; background:#fff; color:var(--gris)}
   #indBody .bar-row .bl{width:230px}
+  .zona-sum{font-size:13px; margin-bottom:10px; color:var(--gris)}
+  .zona-note{background:#eef4fb; border:1px dashed var(--azul-claro); border-radius:8px; padding:12px 14px; margin-bottom:16px; font-size:13px; color:var(--gris)}
+  .zona-note b{color:var(--azul)}
 
   /* Fase Visita + histórico del funnel */
   .etapa-visita{color:#2f5c99; border-color:var(--azul-claro); background:#eef4fb}
@@ -303,6 +306,7 @@
       <button id="vLista" class="active" onclick="setView('lista')">📋 Lista</button>
       <button id="vCal" onclick="setView('cal')">📅 Calendario</button>
       <button id="vDash" style="display:none" onclick="setView('dash')">📊 Cuadro de mando</button>
+      <button id="vZonas" onclick="setView('zonas')">🗺 Zonas</button>
     </span>
     <input type="search" id="q" placeholder="Buscar empresa, CIF, email, población…" oninput="render()">
     <select id="fTipo" onchange="render()">
@@ -398,6 +402,11 @@
         <div class="tablewrap"><table id="dashVend"></table></div>
       </div>
     </div>
+  </div>
+
+  <div id="viewZonas" style="display:none">
+    <div class="zona-note">🗺 <b>Mapa geográfico</b>: se implementará en la versión con servidor (opción b). Aquí tienes el desglose de <b>códigos postales por vendedor</b> y la actividad en cada uno; la estructura de datos ya está preparada para volcarla en el mapa.</div>
+    <div class="dash-wrap" id="zonasBody"></div>
   </div>
 </main>
 
@@ -881,6 +890,7 @@ function render(){
   renderKpis();
   if(viewMode==='cal') renderCalendar();
   if(viewMode==='dash') renderDashboard();
+  if(viewMode==='zonas') renderZonas();
 }
 
 function renderKpis(){
@@ -913,9 +923,11 @@ function setView(v){
   document.getElementById('vLista').classList.toggle('active',v==='lista');
   document.getElementById('vCal').classList.toggle('active',v==='cal');
   document.getElementById('vDash').classList.toggle('active',v==='dash');
+  document.getElementById('vZonas').classList.toggle('active',v==='zonas');
   document.getElementById('viewLista').style.display=v==='lista'?'':'none';
   document.getElementById('viewCal').style.display=v==='cal'?'':'none';
   document.getElementById('viewDash').style.display=v==='dash'?'':'none';
+  document.getElementById('viewZonas').style.display=v==='zonas'?'':'none';
   render();
 }
 function calMove(dir){
@@ -1072,6 +1084,36 @@ function renderIndicadores(){
     const w = x.r==null?0:Math.min(100,x.r);
     return `<div class="bar-row"><div class="bl">${x.l}</div><div class="bt"><div class="bf" style="width:${w}%;background:var(--azul)"></div></div><div class="bv">${pct} <span class="muted">(${x.a}/${x.b})</span></div></div>`;
   }).join('');
+}
+
+/* ---- Vista de zonas (CP por vendedor) ---- */
+function renderZonas(){
+  const cont=document.getElementById('zonasBody'); if(!cont) return;
+  const coms = canSeeAll()? COMERCIALES : COMERCIALES.filter(c=>session && c.user===session.user);
+  const vis=visibleData();
+  let html='';
+  coms.forEach(com=>{
+    const clientes=vis.filter(c=>c.vendedor===com.user);
+    const reglas=reglasDe(com.user);
+    const byCp={};
+    clientes.forEach(c=>{ const cp=(c.cp||'(sin CP)'); (byCp[cp]=byCp[cp]||{cp, pob:c.poblacion||'', n:0, reg:0}); byCp[cp].n++; byCp[cp].reg+=(c.historial||[]).length; });
+    const arr=Object.values(byCp).sort((a,b)=>b.n-a.n);
+    const enZona=clientes.filter(c=>cpEnZona(c.cp,reglas)).length;
+    const fuera=clientes.length-enZona;
+    const maxN=Math.max(1, ...arr.map(x=>x.n));
+    html+=`<div class="card dash-card">
+      <div class="dash-h">${esc(com.nombre)} <span style="font-weight:400;font-size:12px;color:#9aa2a9">· Zona: ${reglas.length?esc(reglas.join(', ')):'sin definir'}</span></div>
+      <div class="dash-body">
+        <div class="zona-sum">${clientes.length} cliente(s) · <b>${enZona}</b> en zona${fuera?` · <b class="vencida">${fuera} fuera de zona</b>`:''}</div>
+        ${arr.length? arr.map(x=>{
+          const inz = x.cp!=='(sin CP)' && cpEnZona(x.cp,reglas);
+          const w=Math.round(x.n*100/maxN);
+          return `<div class="bar-row"><div class="bl">${esc(x.cp)}${x.pob?` <span class="muted">${esc(x.pob)}</span>`:''}${inz?'':' <span class="warn-icon" title="Fuera de zona">⚠</span>'}</div><div class="bt"><div class="bf" style="width:${w}%;background:${inz?'var(--azul)':'var(--rojo)'}"></div></div><div class="bv">${x.n} cli · ${x.reg} reg.</div></div>`;
+        }).join('') : '<p class="hint">Sin clientes en la cartera.</p>'}
+      </div>
+    </div>`;
+  });
+  cont.innerHTML=html || '<div class="empty">Sin datos de zona.</div>';
 }
 
 /* ---- Modal ---- */
