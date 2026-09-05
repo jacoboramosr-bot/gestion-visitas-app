@@ -199,6 +199,11 @@
   .minibar .mf{position:absolute; left:0; top:0; bottom:0; background:var(--azul-claro); border-radius:4px}
   .minibar span{position:absolute; right:7px; top:0; line-height:20px; font-size:12px; font-weight:700; color:var(--gris)}
   .tablewrap{overflow-x:auto}
+  .ind-filters{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:14px}
+  .ind-filters .field{min-width:130px}
+  .ind-filters .field label{font-size:11px; text-transform:uppercase; letter-spacing:.4px}
+  .ind-filters select, .ind-filters input{padding:7px 9px; border:1px solid var(--gris-claro); border-radius:6px; font:inherit; background:#fff; color:var(--gris)}
+  #indBody .bar-row .bl{width:230px}
 
   /* Fase Visita + histórico del funnel */
   .etapa-visita{color:#2f5c99; border-color:var(--azul-claro); background:#eef4fb}
@@ -363,6 +368,27 @@
 
   <div id="viewDash" style="display:none">
     <div class="dash-wrap">
+      <div class="card dash-card">
+        <div class="dash-h">Indicadores de gestión (ratios de conversión)</div>
+        <div class="dash-body">
+          <div class="ind-filters">
+            <div class="field"><label>Periodo</label>
+              <select id="indPeriodo" onchange="setIndPeriodo()">
+                <option value="todo">Todo</option>
+                <option value="mes">Mes actual</option>
+                <option value="trim">Trimestre actual</option>
+                <option value="anio">Año actual</option>
+                <option value="pers">Personalizado</option>
+              </select>
+            </div>
+            <div class="field"><label>Desde</label><input type="date" id="indDesde" onchange="document.getElementById('indPeriodo').value='pers'; renderIndicadores()"></div>
+            <div class="field"><label>Hasta</label><input type="date" id="indHasta" onchange="document.getElementById('indPeriodo').value='pers'; renderIndicadores()"></div>
+            <div class="field"><label>Comercial</label><select id="indComercial" onchange="renderIndicadores()"></select></div>
+          </div>
+          <div id="indBody"></div>
+          <p class="hint" style="margin-top:10px">Ratios calculados sobre las <b>acciones registradas en el histórico</b> dentro del periodo y comercial elegidos.</p>
+        </div>
+      </div>
       <div class="card dash-card">
         <div class="dash-h">Reparto de cartera por fase del funnel</div>
         <div class="dash-body" id="dashPhases"></div>
@@ -998,6 +1024,54 @@ function renderDashboard(){
     </tr>`).join('');
   h+=`</tbody>`;
   document.getElementById('dashVend').innerHTML=h;
+
+  // Indicadores de gestión
+  const sel=document.getElementById('indComercial');
+  if(sel && !sel.dataset.filled){ sel.innerHTML='<option value="">Todos los comerciales</option>'+COMERCIALES.map(c=>`<option value="${c.user}">${esc(c.nombre)}</option>`).join(''); sel.dataset.filled='1'; }
+  renderIndicadores();
+}
+function setIndPeriodo(){
+  const p=document.getElementById('indPeriodo').value;
+  const y=_now.getFullYear(), m=_now.getMonth();
+  const iso=d=>d.toISOString().slice(0,10);
+  if(p!=='pers'){
+    let desde='', hasta='';
+    if(p==='mes'){ desde=iso(new Date(y,m,1)); hasta=iso(new Date(y,m+1,0)); }
+    else if(p==='trim'){ const q=Math.floor(m/3)*3; desde=iso(new Date(y,q,1)); hasta=iso(new Date(y,q+3,0)); }
+    else if(p==='anio'){ desde=iso(new Date(y,0,1)); hasta=iso(new Date(y,11,31)); }
+    document.getElementById('indDesde').value=desde;
+    document.getElementById('indHasta').value=hasta;
+  }
+  renderIndicadores();
+}
+function renderIndicadores(){
+  const body=document.getElementById('indBody'); if(!body) return;
+  const filtV=document.getElementById('indComercial').value;
+  const desde=document.getElementById('indDesde').value;
+  const hasta=document.getElementById('indHasta').value;
+  const inRange=ts=>{ if(!ts) return false; const d=ts.slice(0,10); if(desde && d<desde) return false; if(hasta && d>hasta) return false; return true; };
+  const base=visibleData().filter(c=>!filtV || c.vendedor===filtV);
+  const cnt={prospeccion:0,visita:0,oferta:0,pedido:0,fidelizacion:0}; let OF=0;
+  base.forEach(c=>{
+    const hist=(c.historial||[]).filter(e=>inRange(e.ts));
+    const hasFid=hist.some(e=>normEtapa(e.fase)==='fidelizacion');
+    hist.forEach(e=>{ const k=normEtapa(e.fase); if(cnt[k]!==undefined) cnt[k]++; });
+    if(hasFid) OF+=hist.filter(e=>normEtapa(e.fase)==='oferta').length;
+  });
+  const BBDD=base.length;
+  const ratio=(a,b)=> b>0 ? Math.round(a*100/b) : null;
+  const rows=[
+    {l:'Visitas / Prospecciones', a:cnt.visita, b:cnt.prospeccion, r:ratio(cnt.visita,cnt.prospeccion)},
+    {l:'Ofertas / Visitas', a:cnt.oferta, b:cnt.visita, r:ratio(cnt.oferta,cnt.visita)},
+    {l:'Pedidos / Ofertas', a:cnt.pedido, b:cnt.oferta, r:ratio(cnt.pedido,cnt.oferta)},
+    {l:'Visitas Fidelización / BBDD asignada', a:cnt.fidelizacion, b:BBDD, r:ratio(cnt.fidelizacion,BBDD)},
+    {l:'Ofertas Fidelización / Visitas Fidelización', a:OF, b:cnt.fidelizacion, r:ratio(OF,cnt.fidelizacion)}
+  ];
+  body.innerHTML=rows.map(x=>{
+    const pct = x.r==null?'—':x.r+'%';
+    const w = x.r==null?0:Math.min(100,x.r);
+    return `<div class="bar-row"><div class="bl">${x.l}</div><div class="bt"><div class="bf" style="width:${w}%;background:var(--azul)"></div></div><div class="bv">${pct} <span class="muted">(${x.a}/${x.b})</span></div></div>`;
+  }).join('');
 }
 
 /* ---- Modal ---- */
