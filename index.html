@@ -246,6 +246,11 @@
   .task-badge.venc{background:#fdeaea; color:var(--rojo)}
   .task-actions{display:flex; gap:6px; align-items:center}
   .cal-ev.tarea{background:var(--amarillo); color:#5a4a00}
+  /* Documentos */
+  .doc-list{display:flex; flex-direction:column; gap:6px}
+  .doc-item{display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid var(--linea); border-radius:6px; padding:7px 10px; flex-wrap:wrap}
+  .doc-main{flex:1; min-width:220px; font-size:13px}
+  .doc-actions{display:flex; gap:6px}
 
   @media(max-width:980px){ .funnel{grid-template-columns:repeat(2,1fr)} }
   @media(max-width:720px){ .funnel{grid-template-columns:1fr} th.hide-sm,td.hide-sm{display:none} .cal-cell{min-height:72px} }
@@ -526,6 +531,28 @@
         </div>
         <div id="taskList" class="task-list"></div>
       </fieldset>
+
+      <fieldset>
+        <legend>Documentos adjuntos</legend>
+        <div class="task-add">
+          <div class="grid">
+            <div class="field"><label>Fase</label>
+              <select id="docFase">
+                <option value="visita">Visita</option>
+                <option value="oferta">Oferta</option>
+                <option value="pedido">Pedido (DMS)</option>
+                <option value="prospeccion">Prospección</option>
+                <option value="fidelizacion">Fidelización</option>
+              </select>
+            </div>
+            <div class="field full"><label>Archivo (máx. 1,5 MB)</label><input type="file" id="docFile"></div>
+          </div>
+          <button class="btn-ghost" type="button" onclick="addDoc()">📎 Adjuntar documento</button>
+          <button class="btn-ghost" type="button" onclick="descargarPlantilla()">⬇ Descargar plantilla de visita</button>
+          <span class="hint">Los adjuntos se guardan en el navegador (demo). La lectura automática para autocompletar la ficha y la integración con el DMS son de la versión servidor.</span>
+        </div>
+        <div id="docList" class="doc-list"></div>
+      </fieldset>
     </div>
     <div class="modal-foot">
       <button class="btn-danger" id="delBtn" style="display:none" onclick="deleteClient()">Eliminar</button>
@@ -726,7 +753,7 @@ function load(){
     return JSON.parse(raw)||[];
   }catch(e){ return []; }
 }
-function save(){ localStorage.setItem(STORE, JSON.stringify(data)); }
+function save(){ try{ localStorage.setItem(STORE, JSON.stringify(data)); }catch(e){ alert('No se pudo guardar en el navegador: almacenamiento lleno (probablemente por documentos adjuntos grandes). El almacenamiento de documentos es una función de la versión con servidor.'); } }
 function uid(){ return 'c'+Date.now().toString(36)+Math.floor(performance.now()).toString(36); }
 
 /* ---- Clasificación por parque ---- */
@@ -1137,6 +1164,9 @@ function openModal(id){
   g('taskFecha').value=''; g('taskDesc').value='';
   modalTasks = (c && Array.isArray(c.tareas)) ? c.tareas.map(t=>({...t})) : [];
   renderTasks();
+  const df=document.getElementById('docFile'); if(df) df.value='';
+  modalDocs = (c && Array.isArray(c.documentos)) ? c.documentos.map(d=>({...d})) : [];
+  renderDocs();
   fillComerciales();
   g('comercial').value = c?.vendedor || (session && session.role==='vendedor' ? session.user : COMERCIALES[0].user);
   // El vendedor no puede reasignar cartera: se le fija a sí mismo y se bloquea
@@ -1212,6 +1242,40 @@ function taskDone(id){
 }
 function taskDel(id){ if(!confirm('¿Eliminar esta acción programada?')) return; modalTasks=modalTasks.filter(x=>x.id!==id); renderTasks(); }
 
+/* ---- Documentos adjuntos ---- */
+let modalDocs=[];
+function renderDocs(){
+  const list=document.getElementById('docList');
+  if(!modalDocs.length){ list.innerHTML='<div class="hist-empty">Sin documentos adjuntos.</div>'; return; }
+  list.innerHTML=modalDocs.slice().sort((a,b)=>(a.fase||'').localeCompare(b.fase||'')).map(d=>
+    `<div class="doc-item"><div class="doc-main"><span class="etapa etapa-${normEtapa(d.fase)}">${etapaShort(d.fase)}</span> <b>${esc(d.nombre)}</b> <span class="muted">${(d.tam/1024).toFixed(0)} KB · ${esc(d.subidoPor||'')} ${d.ts?fmtDT(d.ts):''}</span></div><div class="doc-actions"><button class="btn-ghost btn-sm" onclick="docDownload('${d.id}')">Descargar</button><button class="btn-danger btn-sm" onclick="docDel('${d.id}')">✕</button></div></div>`
+  ).join('');
+}
+function addDoc(){
+  const inp=document.getElementById('docFile'); const f=inp.files&&inp.files[0];
+  if(!f){ alert('Selecciona un archivo.'); return; }
+  if(f.size > 1.5*1024*1024){ alert('El archivo supera 1,5 MB. En la demo (navegador) los adjuntos deben ser pequeños; el almacenamiento de documentos grandes es de la versión servidor.'); return; }
+  const fase=document.getElementById('docFase').value;
+  const r=new FileReader();
+  r.onload=()=>{
+    modalDocs.push({id:'d'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36), nombre:f.name, tipo:f.type||'', tam:f.size, fase, dataUrl:r.result, subidoPor: session?`${session.nombre} (${session.user})`:'', ts:new Date().toISOString()});
+    inp.value=''; renderDocs();
+  };
+  r.readAsDataURL(f);
+}
+function docDownload(id){ const d=modalDocs.find(x=>x.id===id); if(!d) return; const a=document.createElement('a'); a.href=d.dataUrl; a.download=d.nombre; a.click(); }
+function docDel(id){ if(!confirm('¿Eliminar este documento adjunto?')) return; modalDocs=modalDocs.filter(x=>x.id!==id); renderDocs(); }
+function descargarPlantilla(){
+  const html='<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Plantilla de recogida de datos — Visita · Fiateira Motor</title>'
+   +'<style>body{font-family:Arial,Helvetica,sans-serif;color:#333;max-width:820px;margin:20px auto;padding:0 16px}h1{color:#002B5C;font-size:20px;margin-bottom:4px}fieldset{border:1px solid #ccc;border-radius:6px;margin-bottom:14px;padding:10px 14px}legend{color:#002B5C;font-weight:bold}label{display:block;font-size:13px;margin:8px 0}.row{display:flex;gap:16px;flex-wrap:wrap}.row label{flex:1;min-width:180px}.line{border-bottom:1px solid #999;min-height:18px;margin-top:3px}@media print{button{display:none}}</style></head><body>'
+   +'<h1>Fiateira Motor — Recogida de datos (Visita)</h1><p>Fecha: ____________  ·  Vendedor: ____________</p>'
+   +'<fieldset><legend>Datos de la empresa</legend><div class="row"><label>Empresa<div class="line"></div></label><label>CIF<div class="line"></div></label></div><div class="row"><label>Persona de contacto<div class="line"></div></label><label>Teléfono<div class="line"></div></label></div><div class="row"><label>Email<div class="line"></div></label><label>Población<div class="line"></div></label><label>Código postal<div class="line"></div></label></div></fieldset>'
+   +'<fieldset><legend>Flota (parque)</legend><div class="row"><label>Nº turismos<div class="line"></div></label><label>Combustión turismos<div class="line"></div></label></div><div class="row"><label>Nº furgonetas<div class="line"></div></label><label>Tamaño (1A/2A/3A)<div class="line"></div></label><label>Combustión furgonetas<div class="line"></div></label></div><div class="row"><label>Uds. a cambiar (año)<div class="line"></div></label><label>Uds. a ampliar (año)<div class="line"></div></label></div><label>Marcas actuales<div class="line"></div></label></fieldset>'
+   +'<fieldset><legend>Comentarios / resultado de la visita</legend><div class="line" style="min-height:90px"></div></fieldset>'
+   +'<button onclick="window.print()">Imprimir</button></body></html>';
+  dl(new Blob([html],{type:'text/html;charset=utf-8'}),'plantilla_visita_fiateira.html');
+}
+
 function calcTipo(){
   const parque=(+document.getElementById('turismos').value||0)+(+document.getElementById('furgonetas').value||0);
   const t=tipoDe(parque);
@@ -1272,7 +1336,7 @@ function saveClient(){
     tamFur:g('tamFur'), combFur:g('combFur'), udsCambiar:+g('udsCambiar')||0, udsAmpliar:+g('udsAmpliar')||0,
     marcas:g('marcas').trim(), comentarios:g('comentarios').trim(),
     cif:g('cif').trim(), cp:g('cp').trim(),
-    historial: modalHist.slice(), tareas: modalTasks.map(t=>({...t})),
+    historial: modalHist.slice(), tareas: modalTasks.map(t=>({...t})), documentos: modalDocs.map(d=>({...d})),
     etapa:g('etapa'), ultimaVisita:g('ultimaVisita'),
     vendedor: (session && session.role==='vendedor') ? session.user : (document.getElementById('comercial').value||'')
   };
