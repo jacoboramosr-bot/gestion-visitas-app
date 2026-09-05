@@ -222,6 +222,8 @@
   .aprob-item{display:flex; align-items:center; gap:12px; justify-content:space-between; border:1px solid var(--linea); border-left:3px solid var(--rojo); border-radius:8px; padding:10px 12px; margin-bottom:8px; flex-wrap:wrap}
   .aprob-info{min-width:220px; flex:1}
   .aprob-actions{display:flex; gap:6px; flex-wrap:wrap}
+  .aprob-h{font-size:13px; color:var(--azul); margin:16px 0 8px; text-transform:uppercase; letter-spacing:.5px; font-weight:700}
+  .aprob-h:first-child{margin-top:0}
   /* Agenda de tareas */
   .task-add{background:#f7f9fb; border:1px solid var(--linea); border-radius:8px; padding:12px 14px; margin-bottom:10px}
   .task-list{display:flex; flex-direction:column; gap:6px}
@@ -297,7 +299,7 @@
       <button id="vCal" onclick="setView('cal')">📅 Calendario</button>
       <button id="vDash" style="display:none" onclick="setView('dash')">📊 Cuadro de mando</button>
     </span>
-    <input type="search" id="q" placeholder="Buscar empresa, población, marca…" oninput="render()">
+    <input type="search" id="q" placeholder="Buscar empresa, CIF, email, población…" oninput="render()">
     <select id="fTipo" onchange="render()">
       <option value="">Todos los tipos</option>
       <option value="A">Tipo A (+50)</option>
@@ -312,7 +314,7 @@
       <option value="pedido">Pedido</option>
       <option value="fidelizacion">Fidelización</option>
     </select>
-    <label class="chk"><input type="checkbox" id="fVenc" onchange="render()"> Solo visitas vencidas/próximas</label>
+    <label class="chk"><input type="checkbox" id="fVenc" onchange="render()"> Solo pasados de fecha (visita o acción vencida/próxima)</label>
     <span class="spacer"></span>
     <button class="btn-ghost btn-sm" onclick="exportCSV()">Exportar CSV</button>
     <button class="btn-ghost btn-sm" onclick="exportJSON()">Copia seguridad</button>
@@ -540,7 +542,7 @@
 <!-- MODAL APROBACIONES (Jefe/Admin) -->
 <div class="overlay" id="aprobOverlay">
   <div class="modal" style="max-width:640px">
-    <div class="modal-head"><h2>🔐 Aprobaciones pendientes — altas fuera de zona</h2><button class="x" onclick="closeAprob()" title="Cerrar">×</button></div>
+    <div class="modal-head"><h2>🔐 Aprobaciones y reasignaciones</h2><button class="x" onclick="closeAprob()" title="Cerrar">×</button></div>
     <div class="modal-body"><div id="aprobList"></div></div>
     <div class="modal-foot">
       <span class="spacer"></span>
@@ -617,9 +619,11 @@ const SEED=[
     udsCambiar:1, udsAmpliar:0, marcas:'Dacia',
     comentarios:'Cliente nuevo, autónomo con 1 vehículo. Bajo potencial → atención bajo demanda.',
     historial:[
-      {ts:'2026-07-30T16:00:00', fase:'prospeccion', autor:'Ana Souto (ana)', texto:'Primer contacto en el concesionario. Autónomo, 1 vehículo. Interés en furgoneta pequeña.'}
+      {ts:'2026-07-30T16:00:00', fase:'prospeccion', autor:'Ana Souto (ana)', texto:'Primer contacto en el concesionario. Autónomo, 1 vehículo. Interés en furgoneta pequeña.'},
+      {ts:'2026-08-30T10:00:00', fase:'prospeccion', autor:'Vendedor (vendedor)', texto:'Solicitud de reasignación: intento de alta de una empresa ya existente (posible duplicado).'}
     ],
-    etapa:'prospeccion', ultimaVisita:'2026-07-30', vendedor:'ana'
+    etapa:'prospeccion', ultimaVisita:'2026-07-30', vendedor:'ana',
+    reasignSolicitada:{solicitadoPor:'Vendedor (vendedor)', solicitadoUser:'vendedor', ts:'2026-08-30T10:00:00', motivo:'Posible duplicado detectado al crear ficha', resuelto:false}
   },
   {
     id:'demo-d', empresa:'Automóviles Ría, S.L.', cif:'', contacto:'', telefono:'986 77 88 99',
@@ -735,6 +739,25 @@ function cpEnZona(cp, reglas){
 function reglasDe(vend){ return (CFG.zonas && CFG.zonas[vend]) || []; }
 function pendientesAprob(){ return data.filter(c=>c.zonaAprob && c.zonaAprob.estado==='pendiente'); }
 
+/* ---- Duplicados y reasignación ---- */
+function _norm(s){ return (s||'').trim().toLowerCase(); }
+function nombreComercial(u){ const x=COMERCIALES.find(c=>c.user===u); return x?x.nombre:(u||'—'); }
+function ultimoRegistro(c){
+  const h=(c.historial||[]).slice().sort((a,b)=>(b.ts||'').localeCompare(a.ts||''));
+  if(!h.length) return null; const e=h[0]; return {txt:fmtDT(e.ts)+' · '+(e.autor||''), e};
+}
+function findDuplicate(obj){
+  const cif=_norm(obj.cif), email=_norm(obj.email), emp=_norm(obj.empresa);
+  return data.find(c=>{
+    if(obj.id && c.id===obj.id) return false;
+    if(cif && _norm(c.cif)===cif) return true;
+    if(email && _norm(c.email)===email) return true;
+    if(emp && _norm(c.empresa)===emp) return true;
+    return false;
+  });
+}
+function reasignacionesPend(){ return data.filter(c=>c.reasignSolicitada && !c.reasignSolicitada.resuelto); }
+
 /* ---- Fechas ---- */
 function addDays(iso,d){ const dt=new Date(iso+'T00:00:00'); dt.setDate(dt.getDate()+d); return dt; }
 function fmt(dt){ if(!dt) return ''; const d=(dt instanceof Date)?dt:new Date(dt+'T00:00:00'); return d.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}); }
@@ -758,10 +781,10 @@ function render(){
     return {...c, parque, tipo, proxima:prox?prox.getTime():Infinity, proxObj:prox};
   });
 
-  if(q) list=list.filter(c=>[c.empresa,c.poblacion,c.marcas,c.contacto].join(' ').toLowerCase().includes(q));
+  if(q) list=list.filter(c=>[c.empresa,c.cif,c.email,c.poblacion,c.marcas,c.contacto].join(' ').toLowerCase().includes(q));
   if(fTipo) list=list.filter(c=>c.tipo===fTipo);
   if(fEtapa) list=list.filter(c=>c.etapa===fEtapa);
-  if(fVenc) list=list.filter(c=>c.proxObj && diasHasta(c.proxObj)<=15);
+  if(fVenc) list=list.filter(c=>(c.proxObj && diasHasta(c.proxObj)<=15) || tareasVencidas(c).length>0);
 
   list.sort((a,b)=>{
     let va=a[sort.key], vb=b[sort.key];
@@ -803,16 +826,21 @@ function render(){
       alerta.map(c=>`<span class="item" onclick="openModal('${c.id}')">${esc(c.empresa)}</span>`).join('');
   } else { fs.className=''; fs.innerHTML=''; }
 
-  // Bloque 2: pendientes de aprobación (fuera de zona)
-  const pend = canSeeAll() ? pendientesAprob() : visibleData().filter(c=>c.zonaAprob && c.zonaAprob.estado==='pendiente');
+  // Bloque 2+4: pendientes de aprobación (zona) y reasignaciones
   const as=document.getElementById('aprobStrip');
-  if(pend.length){
-    as.className='venc-strip';
-    as.innerHTML = canSeeAll()
-      ? `<b>🔐 ${pend.length} alta(s) fuera de zona pendiente(s) de aprobación:</b> `+pend.map(c=>`<span class="item" onclick="openAprob()">${esc(c.empresa)}</span>`).join('')
-      : `<b>🔐 ${pend.length} de tus altas está(n) pendiente(s)</b> de aprobación del superior (fuera de zona).`;
-  } else { as.className=''; as.innerHTML=''; }
-  const ac=document.getElementById('aprobCount'); if(ac){ const np=canSeeAll()?pendientesAprob().length:0; ac.textContent=np?`(${np})`:''; }
+  if(canSeeAll()){
+    const nz=pendientesAprob().length, nr=reasignacionesPend().length;
+    const parts=[];
+    if(nz) parts.push(`🔐 ${nz} alta(s) fuera de zona`);
+    if(nr) parts.push(`🔁 ${nr} reasignación(es) solicitada(s)`);
+    if(parts.length){ as.className='venc-strip'; as.innerHTML=`<b>Pendiente de tu aprobación:</b> `+parts.map(p=>`<span class="item" onclick="openAprob()">${p}</span>`).join(' '); }
+    else { as.className=''; as.innerHTML=''; }
+  } else {
+    const mias=visibleData().filter(c=>c.zonaAprob && c.zonaAprob.estado==='pendiente').length;
+    if(mias){ as.className='venc-strip'; as.innerHTML=`<b>🔐 ${mias} de tus altas está(n) pendiente(s)</b> de aprobación del superior (fuera de zona).`; }
+    else { as.className=''; as.innerHTML=''; }
+  }
+  const ac=document.getElementById('aprobCount'); if(ac){ const n=canSeeAll()?(pendientesAprob().length+reasignacionesPend().length):0; ac.textContent=n?`(${n})`:''; }
 
   // Bloque 3: acciones (tareas) vencidas sin realizar
   const taccs=[];
@@ -1098,6 +1126,29 @@ function saveClient(){
   const empresa=g('empresa').trim();
   if(!empresa){ alert('Indica el nombre de la empresa.'); document.getElementById('empresa').focus(); return; }
   const id=g('cid');
+  // ---- Bloque 4: aviso de cliente ya existente (solo al crear ficha nueva) ----
+  if(!id){
+    const dup=findDuplicate({id:'', cif:g('cif').trim(), email:g('email').trim(), empresa});
+    if(dup){
+      if(session && session.role==='vendedor'){
+        if(dup.vendedor===session.user){
+          alert('Ya existe en TU cartera una empresa que coincide: «'+dup.empresa+'».\nSe abrirá su ficha (no se crea un duplicado).');
+          closeModal(); openModal(dup.id); return;
+        }
+        dup.reasignSolicitada={solicitadoPor:session.nombre+' ('+session.user+')', solicitadoUser:session.user, ts:new Date().toISOString(), motivo:'Posible duplicado detectado al crear ficha', resuelto:false};
+        dup.historial=(dup.historial||[]).concat([{ts:new Date().toISOString(), fase:normEtapa(dup.etapa), autor:session.nombre+' ('+session.user+')', texto:'Solicitud de reasignación: intento de alta de una empresa ya existente (posible duplicado).'}]);
+        save();
+        alert('Ya existe una empresa con ese CIF, email o nombre, GESTIONADA POR OTRO COMERCIAL.\n\nNo se crea una ficha duplicada. Se ha enviado un aviso a tu superior para valorar la reasignación.');
+        closeModal(); render(); return;
+      } else {
+        const ult=ultimoRegistro(dup);
+        if(confirm('Ya existe una empresa que coincide: «'+dup.empresa+'».\n\nEstado: '+etapaLabel(dup.etapa)+'\nÚltimo registro: '+(ult?ult.txt:'—')+'\nComercial actual: '+nombreComercial(dup.vendedor)+'\n\n¿Abrir la ficha existente? (no se crea un duplicado)')){
+          closeModal(); openModal(dup.id);
+        }
+        return;
+      }
+    }
+  }
   const obj={
     id:id||uid(), empresa, contacto:g('contacto').trim(), telefono:g('telefono').trim(),
     email:g('email').trim(), poblacion:g('poblacion').trim(), nuevo:g('nuevo'),
@@ -1252,22 +1303,36 @@ function saveConfig(){
 function openAprob(){
   if(!canSeeAll()) return;
   const list=document.getElementById('aprobList');
-  const pend=pendientesAprob();
-  if(!pend.length){ list.innerHTML='<p class="hint">No hay altas pendientes de aprobación.</p>'; }
+  const pend=pendientesAprob(), reas=reasignacionesPend();
+  let html='<h3 class="aprob-h">🔐 Altas fuera de zona</h3>';
+  if(!pend.length){ html+='<p class="hint">No hay altas fuera de zona pendientes.</p>'; }
   else {
-    list.innerHTML=pend.map(c=>{
-      const nom=(COMERCIALES.find(x=>x.user===c.vendedor)||{}).nombre||c.vendedor||'—';
-      return `<div class="aprob-item">
+    html+=pend.map(c=>`<div class="aprob-item">
         <div class="aprob-info"><b>${esc(c.empresa)}</b> <span class="muted">· CP ${esc(c.cp||'')} · ${esc(c.poblacion||'')}</span>
-          <div class="hint">${esc(c.zonaAprob.motivo||'')} · Solicitado por ${esc(c.zonaAprob.solicitadoPor||'')} el ${fmtDT(c.zonaAprob.solicitadoTs)} · Comercial: ${esc(nom)}</div></div>
+          <div class="hint">${esc(c.zonaAprob.motivo||'')} · Solicitado por ${esc(c.zonaAprob.solicitadoPor||'')} el ${fmtDT(c.zonaAprob.solicitadoTs)} · Comercial: ${esc(nombreComercial(c.vendedor))}</div></div>
         <div class="aprob-actions">
           <button class="btn-ghost btn-sm" onclick="closeAprob();openModal('${c.id}')">Ver ficha</button>
           <button class="btn-primary btn-sm" onclick="aprobResolver('${c.id}','aceptada')">Aceptar</button>
           <button class="btn-danger btn-sm" onclick="aprobResolver('${c.id}','rechazada')">Rechazar</button>
         </div>
+      </div>`).join('');
+  }
+  html+='<h3 class="aprob-h">🔁 Reasignaciones solicitadas</h3>';
+  if(!reas.length){ html+='<p class="hint">No hay reasignaciones pendientes.</p>'; }
+  else {
+    html+=reas.map(c=>{ const ult=ultimoRegistro(c);
+      return `<div class="aprob-item">
+        <div class="aprob-info"><b>${esc(c.empresa)}</b> <span class="muted">· CIF ${esc(c.cif||'—')}</span>
+          <div class="hint">Estado: ${esc(etapaLabel(c.etapa))} · Último registro: ${esc(ult?ult.txt:'—')} · Comercial actual: ${esc(nombreComercial(c.vendedor))} · Solicita: ${esc(c.reasignSolicitada.solicitadoPor||'')}</div></div>
+        <div class="aprob-actions">
+          <button class="btn-ghost btn-sm" onclick="closeAprob();openModal('${c.id}')">Ver ficha</button>
+          <button class="btn-primary btn-sm" onclick="reasignar('${c.id}')">Reasignar al solicitante</button>
+          <button class="btn-danger btn-sm" onclick="reasignDescartar('${c.id}')">Descartar</button>
+        </div>
       </div>`;
     }).join('');
   }
+  list.innerHTML=html;
   document.getElementById('aprobOverlay').classList.add('open');
 }
 function closeAprob(){ document.getElementById('aprobOverlay').classList.remove('open'); }
@@ -1278,6 +1343,24 @@ function aprobResolver(id, estado){
   c.zonaAprob.resueltoPor=session.nombre+' ('+session.user+')';
   c.zonaAprob.resueltoTs=new Date().toISOString();
   c.historial=(c.historial||[]).concat([{ts:new Date().toISOString(), fase:normEtapa(c.etapa), autor:session.nombre+' ('+session.user+')', texto:'Aprobación de alta fuera de zona: '+(estado==='aceptada'?'ACEPTADA':'RECHAZADA')+'.'}]);
+  save(); openAprob(); render();
+}
+function reasignar(id){
+  if(!canSeeAll()) return;
+  const c=data.find(x=>x.id===id); if(!c||!c.reasignSolicitada) return;
+  const antU=c.vendedor, nuevoU=c.reasignSolicitada.solicitadoUser;
+  c.vendedor=nuevoU;
+  c.reasignSolicitada.resuelto=true; c.reasignSolicitada.resultado='reasignada';
+  c.reasignSolicitada.resueltoPor=session.nombre+' ('+session.user+')'; c.reasignSolicitada.resueltoTs=new Date().toISOString();
+  c.historial=(c.historial||[]).concat([{ts:new Date().toISOString(), fase:normEtapa(c.etapa), autor:session.nombre+' ('+session.user+')', texto:'Cliente reasignado de '+nombreComercial(antU)+' a '+nombreComercial(nuevoU)+'.'}]);
+  save(); openAprob(); render();
+}
+function reasignDescartar(id){
+  if(!canSeeAll()) return;
+  const c=data.find(x=>x.id===id); if(!c||!c.reasignSolicitada) return;
+  c.reasignSolicitada.resuelto=true; c.reasignSolicitada.resultado='descartada';
+  c.reasignSolicitada.resueltoPor=session.nombre+' ('+session.user+')'; c.reasignSolicitada.resueltoTs=new Date().toISOString();
+  c.historial=(c.historial||[]).concat([{ts:new Date().toISOString(), fase:normEtapa(c.etapa), autor:session.nombre+' ('+session.user+')', texto:'Solicitud de reasignación descartada.'}]);
   save(); openAprob(); render();
 }
 
