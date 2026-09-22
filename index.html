@@ -1506,15 +1506,37 @@ const IMPORT_COLS=[
   ['Comercial','comercial'],['Etapa','etapa']
 ];
 function _key(s){ return (s||'').toString().trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+function parseCSV(text){
+  text=text.replace(/^﻿/,'');
+  const nl=text.indexOf('\n'); const firstLine=nl>=0?text.slice(0,nl):text;
+  const delim=(firstLine.split(';').length>firstLine.split(',').length)?';':',';
+  const rows=[]; let i=0,f='',row=[],q=false;
+  const pushF=()=>{ row.push(f); f=''; };
+  const pushR=()=>{ pushF(); rows.push(row); row=[]; };
+  while(i<text.length){ const ch=text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=ch; }
+    else { if(ch==='"') q=true; else if(ch===delim) pushF(); else if(ch==='\n') pushR(); else if(ch!=='\r') f+=ch; }
+    i++;
+  }
+  if(f.length||row.length) pushR();
+  if(!rows.length) return [];
+  const headers=rows[0];
+  return rows.slice(1).filter(r=>r.some(x=>(x||'').trim()!=='')).map(r=>{ const o={}; headers.forEach((h,idx)=>o[h]=r[idx]!==undefined?r[idx]:''); return o; });
+}
 function importBBDDFile(e){
   const f=e.target.files&&e.target.files[0]; if(!f) return;
-  if(typeof XLSX==='undefined'){ alert('La librería de Excel no está disponible en esta copia.'); e.target.value=''; return; }
+  const isCsv=/\.csv$/i.test(f.name);
   const r=new FileReader();
   r.onload=()=>{
     try{
-      const wb=XLSX.read(new Uint8Array(r.result),{type:'array'});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      procesarImport(XLSX.utils.sheet_to_json(ws,{defval:''}));
+      if(typeof XLSX!=='undefined'){
+        const wb=XLSX.read(new Uint8Array(r.result),{type:'array'});
+        procesarImport(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''}));
+      } else if(isCsv){
+        procesarImport(parseCSV(new TextDecoder('utf-8').decode(new Uint8Array(r.result))));
+      } else {
+        alert('El .xlsx solo se importa en la versión web (jacoboramosr-bot.github.io). En esta vista puedes importar la BBDD en formato CSV.');
+      }
     }catch(err){ alert('No se pudo leer el archivo: '+(err&&err.message||err)); }
     e.target.value='';
   };
